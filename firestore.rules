@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Auth Helpers
+    function isSignedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isOwner(ownerId) { return isSignedIn() && request.auth.uid == ownerId; }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidId(id) { 
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+
+    match /approved_users/{email} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isAdmin() || request.auth.token.email == 'rudals5569@gmail.com' || (request.auth.token.email == email && request.auth.token.email.matches('.*@placen\\.co\\.kr$')));
+    }
+
+    match /admins/{uid} {
+      // Admins table is read-only for clients, managed manually or via cloud functions.
+      allow read: if isSignedIn();
+    }
+
+    match /solutions/{solutionId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /brands/{brandId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().keys().hasAll(['name', 'category', 'tier', 'status', 'createdAt']) && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100;
+      allow update: if isSignedIn() && (isAdmin() || existing().ownerId == request.auth.uid || existing().ownerId == null);
+      allow delete: if isAdmin();
+    }
+
+    match /contacts/{contactId} {
+      allow read: if isSignedIn();
+      // Enforce the linked brand exists (relational check)
+      allow create: if isSignedIn() && exists(/databases/$(database)/documents/brands/$(incoming().brandId)) && incoming().keys().hasAll(['brandId', 'name', 'role', 'createdAt']) && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100;
+      allow update: if isSignedIn(); // Add strict validation if needed
+      allow delete: if isAdmin();
+    }
+
+    match /meetings/{meetingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && exists(/databases/$(database)/documents/brands/$(incoming().brandId)) && incoming().keys().hasAll(['brandId', 'title', 'createdAt', 'ownerId']) && incoming().ownerId == request.auth.uid && incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 200;
+      allow update: if isSignedIn() && (isAdmin() || existing().ownerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /brandSolutions/{bsId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && exists(/databases/$(database)/documents/brands/$(incoming().brandId)) && incoming().keys().hasAll(['brandId', 'solutionId', 'pipelineStatus', 'department']);
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+  }
+}

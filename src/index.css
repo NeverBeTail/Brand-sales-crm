@@ -1,0 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Map standard indigo- classes to beautiful Naver Greens & Fresh Minty accents */
+  --color-indigo-50: #f0fdf5;     /* Soft mint white */
+  --color-indigo-100: #dafbe4;    /* Transparent green aura */
+  --color-indigo-150: #c6f6d5;    /* Delicate sage outline */
+  --color-indigo-200: #a7f3d0;    /* Pastel emerald outline */
+  --color-indigo-300: #6ee7b7;
+  --color-indigo-500: #03C75A;    /* Primary NEST Premium Naver Green */
+  --color-indigo-550: #03C75A;    
+  --color-indigo-600: #02b04f;    /* Elegant hover state green */
+  --color-indigo-650: #01893d;    /* Deep forest accent */
+  --color-indigo-700: #01893d;
+  --color-indigo-750: #01622c;
+  --color-indigo-800: #01622c;
+  --color-indigo-900: #01431d;
+
+  /* Override hardcoded brand indigo tokens dynamically */
+  --color-[#4F46E5]: #01893d;     /* Deep readable corporate green */
+  --color-[#5c62f5]: #03C75A;     /* Soft Naver main green */
+  --color-[#494ed6]: #01622c;     /* Strong shadow accent green */
+  --color-[#EEF2FF]: #f0fdf5;     /* Fresh light mint */
+  --color-[#E0E7FF]: #dafbe4;     /* Refined backdrop light emerald */
+
+  /* Customize general elements */
+  --color-rose-455: #f43f5e;
+  
+  /* Micro-interactions animation suite */
+  --animate-wiggle: wiggle 0.4s ease-in-out;
+  --animate-shake: shake 0.5s ease-in-out;
+  --animate-fadeIn: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scaleIn: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    15% { transform: rotate(-8deg); }
+    30% { transform: rotate(8deg); }
+    45% { transform: rotate(-5deg); }
+    60% { transform: rotate(4deg); }
+    75% { transform: rotate(-2deg); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+  }
+
+  @keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scaleIn {
+    0% { opacity: 0; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+}
+
+@layer base {
+  body {
+    background-color: #f7faf7; /* Fluid layout bg with organic white balance */
+    background-image: 
+      radial-gradient(at 10% 12%, rgba(3, 199, 90, 0.05) 0px, transparent 45%),
+      radial-gradient(at 90% 88%, rgba(16, 185, 129, 0.06) 0px, transparent 45%),
+      radial-gradient(at 50% 12%, rgba(59, 130, 246, 0.03) 0px, transparent 50%);
+    background-attachment: fixed;
+    color: #1e293b;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Glassmorphism Classes: iOS-style ultra-premium visual backdrops */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(24px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(210%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(28px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(185%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.58) !important;
+  box-shadow: 
+    0 10px 40px -15px rgba(0, 0, 0, 0.02),
+    0 2px 4px rgba(3, 199, 90, 0.01),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
+.glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-card-hover:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 
+    0 16px 50px -10px rgba(3, 199, 90, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+  border-color: rgba(3, 199, 90, 0.22) !important;
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.52) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: #03C75A !important;
+  box-shadow: 0 0 0 3px rgba(3, 199, 90, 0.16) !important;
+}
+
+div.shimmer-active {
+  background: linear-gradient(90deg, #f0fdf5 25%, #dafbe4 37%, #f0fdf5 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Custom scrollbars for macOS style look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(3, 199, 90, 0.12);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(3, 199, 90, 0.25);
+}

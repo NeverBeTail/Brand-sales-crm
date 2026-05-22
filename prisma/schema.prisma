@@ -1,0 +1,112 @@
+// Prisma Schema Definition for Cross-Functional Sales CRM
+// Solves duplicate contact pain points by managing pipelines at the Solution level.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum BrandCategory {
+  FB_Brand            @map("F&B Brand")
+  Non_food_Brand       @map("Non-food Brand")
+  Retail_Store         @map("Retail/Store")
+  Franchise_Partner    @map("Franchise Partner")
+}
+
+enum PipelineStatus {
+  Cold_Call            @map("Cold Call")
+  First_Meeting        @map("First Meeting")
+  Proposal_Negotiation @map("Proposal & Negotiation")
+  Deal_Completed       @map("Deal Completed")
+}
+
+model Brand {
+  id                 String          @id @default(uuid())
+  name               String          @unique
+  category           BrandCategory
+  logo               String
+  headquarters       String
+  lat                Float
+  lng                Float
+  description        String
+  targetStoresCount  Int
+  monthlyRevenueEst  String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  
+  // Relations
+  contacts           Contact[]
+  meetings           Meeting[]
+  solutions          BrandSolution[]
+}
+
+// 4 Basic Solutions Lineup to cross-sell: Dodo Point, Now Waiting, Naver Booking, Naver Connect
+model Solution {
+  id          String          @id @default(uuid())
+  name        String          @unique // 예: "도도포인트 (Dodo Point)"
+  code        String          @unique // 예: "DodoPoint"
+  category    String          // 예: "적립/마케팅"
+  description String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  brands      BrandSolution[]
+  meetings    Meeting[]
+}
+
+// Multi-Solution Mapping table representing independent PipelineStatus per Product under one Brand
+model BrandSolution {
+  id             String         @id @default(uuid())
+  brandId        String
+  solutionId     String
+  pipelineStatus PipelineStatus @default(Cold_Call)
+  department     String?        // 예: "대기전략부", "예약플랫폼팀"
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  brand          Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  solution       Solution       @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, solutionId])
+}
+
+model Contact {
+  id        String    @id @default(uuid())
+  brandId   String
+  name      String
+  role      String    // "Decision Maker", "Staff", "Franchisee/Store Owner"
+  position  String
+  phone     String
+  email     String
+  createdAt DateTime  @default(now())
+  
+  brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  meetings  Meeting[]
+}
+
+model Meeting {
+  id             String         @id @default(uuid())
+  brandId        String
+  contactId      String?
+  solutionId     String?        // 어떤 솔루션을 제안하기 위한 미팅인지 명기
+  department     String?        // 제안 주체 부서 (예: "마케팅사업부", "대기전략파트")
+  title          String
+  dateTime       DateTime
+  type           String         // "Online" | "Offline"
+  location       String?
+  googleMeetLink String?
+  pipelineStatus PipelineStatus @default(First_Meeting)
+  notes          String?        @db.Text
+  summary        String?        @db.Text
+  actionItems    String[]       // Array of follow-up action items
+  createdAt      DateTime       @default(now())
+
+  brand          Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  contact        Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  solution       Solution?      @relation(fields: [solutionId], references: [id], onDelete: SetNull)
+}

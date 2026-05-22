@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "Brand": {
+      "title": "Brand",
+      "description": "Information about a brand/company.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "tier": { "type": "string" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["name", "category", "tier", "status", "createdAt"]
+    },
+    "Contact": {
+      "title": "Contact",
+      "description": "A person associated with a brand.",
+      "type": "object",
+      "properties": {
+        "brandId": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "position": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["brandId", "name", "role", "createdAt"]
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "A sales or follow-up meeting.",
+      "type": "object",
+      "properties": {
+        "brandId": { "type": "string" },
+        "contactId": { "type": "string" },
+        "solutionId": { "type": "string" },
+        "department": { "type": "string" },
+        "title": { "type": "string" },
+        "dateTime": { "type": "string" },
+        "type": { "type": "string" },
+        "location": { "type": "string" },
+        "googleMeetLink": { "type": "string" },
+        "pipelineStatus": { "type": "string" },
+        "notes": { "type": "string" },
+        "summary": { "type": "string" },
+        "actionItems": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reminderSet": { "type": "boolean" },
+        "reminderSent": { "type": "boolean" },
+        "deletedAt": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["brandId", "title", "createdAt", "ownerId"]
+    },
+    "Solution": {
+      "title": "Solution",
+      "description": "Global solution offerings.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "code": { "type": "string" }
+      },
+      "required": ["name", "code"]
+    },
+    "BrandSolution": {
+      "title": "BrandSolution",
+      "description": "Mapping of a brand to a solution and its status.",
+      "type": "object",
+      "properties": {
+        "brandId": { "type": "string" },
+        "solutionId": { "type": "string" },
+        "pipelineStatus": { "type": "string" },
+        "department": { "type": "string" }
+      },
+      "required": ["brandId", "solutionId", "pipelineStatus", "department"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Users with admin or manager privileges.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "brands": {
+      "schema": { "$ref": "#/entities/Brand" },
+      "description": "Contains enterprise brand data"
+    },
+    "contacts": {
+      "schema": { "$ref": "#/entities/Contact" },
+      "description": "Contacts related to brands"
+    },
+    "meetings": {
+      "schema": { "$ref": "#/entities/Meeting" },
+      "description": "Meeting logs"
+    },
+    "solutions": {
+      "schema": { "$ref": "#/entities/Solution" },
+      "description": "Available offerings"
+    },
+    "brandSolutions": {
+      "schema": { "$ref": "#/entities/BrandSolution" },
+      "description": "Status of solutions per brand"
+    },
+    "admins": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Role-based access identities"
+    }
+  }
+}
