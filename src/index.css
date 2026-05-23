@@ -6,32 +6,31 @@
   --font-sans: "Pretendard", "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Map standard indigo- classes to beautiful Naver Greens & Fresh Minty accents */
-  --color-indigo-50: #f0fdf5;     /* Soft mint white */
-  --color-indigo-100: #dafbe4;    /* Transparent green aura */
-  --color-indigo-150: #c6f6d5;    /* Delicate sage outline */
-  --color-indigo-200: #a7f3d0;    /* Pastel emerald outline */
-  --color-indigo-300: #6ee7b7;
-  --color-indigo-500: #03C75A;    /* Primary NEST Premium Naver Green */
+  /* Naver Green Brand Palette — mapped via indigo- token overrides */
+  --color-indigo-50: rgba(3, 199, 90, 0.04);       /* 초경량 네이버 그린 틴트 */
+  --color-indigo-100: rgba(3, 199, 90, 0.08);      /* 연한 그린 오라 */
+  --color-indigo-150: rgba(3, 199, 90, 0.06);      /* 카드 보더 */
+  --color-indigo-200: rgba(3, 199, 90, 0.14);      /* 아웃라인 */
+  --color-indigo-300: #1eca6b;                      /* 밝은 네이버 그린 */
+  --color-indigo-500: #03C75A;                      /* 네이버 1차 브랜드 컬러 */
   --color-indigo-550: #03C75A;    
-  --color-indigo-600: #02b04f;    /* Elegant hover state green */
-  --color-indigo-650: #01893d;    /* Deep forest accent */
-  --color-indigo-700: #01893d;
-  --color-indigo-750: #01622c;
-  --color-indigo-800: #01622c;
-  --color-indigo-900: #01431d;
+  --color-indigo-600: #02b351;                      /* 호버 딥 그린 */
+  --color-indigo-650: #029a46;                      /* 진한 액센트 */
+  --color-indigo-700: #029a46;
+  --color-indigo-750: #02813b;
+  --color-indigo-800: #02813b;
+  --color-indigo-900: #016830;
 
-  /* Override hardcoded brand indigo tokens dynamically */
-  --color-[#4F46E5]: #01893d;     /* Deep readable corporate green */
-  --color-[#5c62f5]: #03C75A;     /* Soft Naver main green */
-  --color-[#494ed6]: #01622c;     /* Strong shadow accent green */
-  --color-[#EEF2FF]: #f0fdf5;     /* Fresh light mint */
-  --color-[#E0E7FF]: #dafbe4;     /* Refined backdrop light emerald */
+  /* Legacy brand overrides → Naver Green */
+  --color-[#4F46E5]: #03C75A;
+  --color-[#5c62f5]: #1eca6b;
+  --color-[#494ed6]: #02b351;
+  --color-[#EEF2FF]: rgba(3, 199, 90, 0.06);
+  --color-[#E0E7FF]: rgba(3, 199, 90, 0.08);
 
-  /* Customize general elements */
   --color-rose-455: #f43f5e;
   
-  /* Micro-interactions animation suite */
+  /* Micro-interaction animation suite */
   --animate-wiggle: wiggle 0.4s ease-in-out;
   --animate-shake: shake 0.5s ease-in-out;
   --animate-fadeIn: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -65,35 +64,39 @@
 
 @layer base {
   body {
-    background-color: #f7faf7; /* Fluid layout bg with organic white balance */
+    background-color: #f0f4f0; /* 밝고 부드러운 민트 그레이 캔버스 */
     background-image: 
-      radial-gradient(at 10% 12%, rgba(3, 199, 90, 0.05) 0px, transparent 45%),
-      radial-gradient(at 90% 88%, rgba(16, 185, 129, 0.06) 0px, transparent 45%),
-      radial-gradient(at 50% 12%, rgba(59, 130, 246, 0.03) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, rgba(3, 199, 90, 0.12) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(3, 199, 90, 0.06) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(3, 199, 90, 0.08) 0px, transparent 60%);
     background-attachment: fixed;
-    color: #1e293b;
+    color: #1e293b; /* 어두운 슬레이트 텍스트 (라이트 모드) */
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
   }
 }
 
-/* Glassmorphism Classes: iOS-style ultra-premium visual backdrops */
+/* ──────────────────────────────────────────────────────────
+   Glassmorphism Classes: Light Naver-Green SaaS Theme
+   글래스 재질 유지 + 밝은 화이트/그린 톤
+   ────────────────────────────────────────────────────────── */
+
 .glass-panel {
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(24px) saturate(210%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(210%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.60) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(3, 199, 90, 0.10) !important;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.78) !important;
-  backdrop-filter: blur(28px) saturate(185%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(185%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.58) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(3, 199, 90, 0.12) !important;
   box-shadow: 
-    0 10px 40px -15px rgba(0, 0, 0, 0.02),
-    0 2px 4px rgba(3, 199, 90, 0.01),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+    0 12px 40px -12px rgba(3, 199, 90, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
 }
 
 .glass-card-hover {
@@ -101,29 +104,33 @@
 }
 .glass-card-hover:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.88) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
   box-shadow: 
-    0 16px 50px -10px rgba(3, 199, 90, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.02),
-    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
-  border-color: rgba(3, 199, 90, 0.22) !important;
+    0 20px 40px -10px rgba(3, 199, 90, 0.12),
+    0 0 20px 1px rgba(3, 199, 90, 0.05),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(3, 199, 90, 0.30) !important;
 }
 
 .glass-input {
-  background: rgba(255, 255, 255, 0.52) !important;
+  background: rgba(255, 255, 255, 0.50) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  border: 1px solid rgba(3, 199, 90, 0.12) !important;
+  color: #1e293b !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.glass-input::placeholder {
+  color: #94a3b8 !important;
+}
 .glass-input:focus {
-  background: rgba(255, 255, 255, 0.92) !important;
+  background: rgba(255, 255, 255, 0.80) !important;
   border-color: #03C75A !important;
   box-shadow: 0 0 0 3px rgba(3, 199, 90, 0.16) !important;
 }
 
 div.shimmer-active {
-  background: linear-gradient(90deg, #f0fdf5 25%, #dafbe4 37%, #f0fdf5 63%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.4) 25%, rgba(3, 199, 90, 0.10) 37%, rgba(255, 255, 255, 0.4) 63%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -133,7 +140,7 @@ div.shimmer-active {
   100% { background-position: 200% 0; }
 }
 
-/* Custom scrollbars for macOS style look */
+/* Custom scrollbars — 네이버 그린 톤 */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -142,9 +149,9 @@ div.shimmer-active {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(3, 199, 90, 0.12);
+  background: rgba(3, 199, 90, 0.18);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(3, 199, 90, 0.25);
+  background: rgba(3, 199, 90, 0.35);
 }

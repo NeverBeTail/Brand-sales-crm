@@ -10,7 +10,7 @@ export default function UserGuide() {
   const [activeTab, setActiveTab] = useState<'intro' | 'kanban' | 'ai' | 'admin'>('intro');
 
   return (
-    <div className="glass-panel rounded-[32px] border border-white/50 p-6 sm:p-8 shadow-sm space-y-6 animate-fadeIn">
+    <div className="glass-panel rounded-[32px] border border-[#03C75A]/100 p-6 sm:p-8 shadow-sm space-y-6 animate-fadeIn">
       {/* Upper header block */}
       <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-indigo-50/60 gap-4">
         <div className="space-y-1">
@@ -39,7 +39,7 @@ export default function UserGuide() {
           onClick={() => setActiveTab('intro')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
             activeTab === 'intro'
-              ? 'bg-slate-900 text-white shadow-sm'
+              ? 'bg-white/70 text-white shadow-sm'
               : 'bg-white/65 hover:bg-slate-50 border border-slate-200/50 text-slate-600'
           }`}
         >
@@ -51,7 +51,7 @@ export default function UserGuide() {
           onClick={() => setActiveTab('kanban')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
             activeTab === 'kanban'
-              ? 'bg-slate-900 text-white shadow-sm'
+              ? 'bg-white/70 text-white shadow-sm'
               : 'bg-white/65 hover:bg-slate-50 border border-slate-200/50 text-slate-600'
           }`}
         >
@@ -63,7 +63,7 @@ export default function UserGuide() {
           onClick={() => setActiveTab('ai')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
             activeTab === 'ai'
-              ? 'bg-slate-900 text-white shadow-sm'
+              ? 'bg-white/70 text-white shadow-sm'
               : 'bg-white/65 hover:bg-slate-50 border border-slate-200/50 text-slate-600'
           }`}
         >
@@ -75,7 +75,7 @@ export default function UserGuide() {
           onClick={() => setActiveTab('admin')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
             activeTab === 'admin'
-              ? 'bg-slate-900 text-white shadow-sm'
+              ? 'bg-white/70 text-white shadow-sm'
               : 'bg-white/65 hover:bg-slate-50 border border-slate-200/50 text-slate-600'
           }`}
         >
@@ -128,21 +128,21 @@ export default function UserGuide() {
                   <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-150 relative">
                     <span className="absolute top-2.5 right-2.5 text-xs font-black text-slate-350 font-mono">01</span>
                     <h4 className="font-bold text-[11px] text-slate-800">아웃바운드 발굴</h4>
-                    <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
                       미개척 프랜차이즈 및 가맹 브랜드를 발굴하여 초기 영업 타겟으로 우선 계정 등록합니다.
                     </p>
                   </div>
                   <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-150 relative">
                     <span className="absolute top-2.5 right-2.5 text-xs font-black text-slate-350 font-mono">02</span>
                     <h4 className="font-bold text-[11px] text-slate-800">상담 내역 동기화</h4>
-                    <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
                       구글 캘린더와 실시간 동동기화 상태를 유지하며 가맹 미팅 및 키맨 상담 로그를 적재하고 관리합니다.
                     </p>
                   </div>
                   <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-150 relative">
                     <span className="absolute top-2.5 right-2.5 text-xs font-black text-slate-350 font-mono">03</span>
                     <h4 className="font-bold text-[11px] text-slate-800">AI 세일즈 전환</h4>
-                    <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
                       미팅 메모를 음성/텍스트로 입력하여 원클릭 AI 제안서 생성 및 피드백 지원을 입수합니다.
                     </p>
                   </div>
@@ -282,33 +282,33 @@ export default function UserGuide() {
             <div className="space-y-3 divide-y divide-slate-100 text-[11px] font-medium text-slate-600">
               <div className="pt-2">
                 <span className="font-black text-slate-800">Q. "브랜드 종결"의 정확한 정의가 뭔가요?</span>
-                <p className="text-slate-500 mt-1 leading-relaxed">
+                <p className="text-slate-400 mt-1 leading-relaxed">
                   가맹 브랜드가 당사 솔루션 4종(도도포인트, 나우웨이팅, 네이버예약, 네이버커넥트)을 모두 도입하여 성공적으로 운영하는 유기적 상태를 의미합니다.
                 </p>
               </div>
 
               <div className="pt-2.5">
                 <span className="font-black text-slate-800">Q. 교차부서 업무 분란이 일어나면 어떻게 되나요?</span>
-                <p className="text-slate-500 mt-1 leading-relaxed">
+                <p className="text-slate-400 mt-1 leading-relaxed">
                   도도포인트 영업 담당자와 네이버예약 영업 담당자가 실수로 동일 키맨에게 각각 접근하면, 중복 컨택 경고 배너가 나타나며 상호 영업 이력 동기를 권장합니다.
                 </p>
               </div>
 
               <div className="pt-2.5">
                 <span className="font-black text-slate-800">Q. 구글 캘린더 연동은 실시간인가요?</span>
-                <p className="text-slate-500 mt-1 leading-relaxed">
+                <p className="text-slate-400 mt-1 leading-relaxed">
                   구글 Workspace OAuth 가입 승인 시, 작성 내역이 클라우드 계정과 연동되어 가용 미팅을 바로 백업하고 기안화합니다.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 text-slate-200 p-4.5 rounded-2xl border border-indigo-950 space-y-3 shadow-sm relative overflow-hidden">
+          <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 text-slate-800 p-4.5 rounded-2xl border border-indigo-950 space-y-3 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500 rounded-full filter blur-2xl opacity-20 pointer-events-none" />
             <span className="text-[8px] font-black uppercase text-indigo-400 tracking-widest font-mono">단축 제어 관제센터</span>
             <h4 className="text-xs font-black text-white leading-tight">빠른 검색 대시보드 (Command Palette)</h4>
             <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
-              키보드의 <kbd className="bg-slate-800 px-1 py-0.5 rounded text-white font-mono text-[9px]">⌘K</kbd> 또는 <kbd className="bg-slate-800 px-1 py-0.5 rounded text-white font-mono text-[9px]">Ctrl+K</kbd> 단축키를 눌러 전사를 가시화하고 브랜드를 초고속 검색 및 제어할 수 있습니다.
+              키보드의 <kbd className="bg-white/50 px-1 py-0.5 rounded text-white font-mono text-[9px]">⌘K</kbd> 또는 <kbd className="bg-white/50 px-1 py-0.5 rounded text-white font-mono text-[9px]">Ctrl+K</kbd> 단축키를 눌러 전사를 가시화하고 브랜드를 초고속 검색 및 제어할 수 있습니다.
             </p>
           </div>
         </div>

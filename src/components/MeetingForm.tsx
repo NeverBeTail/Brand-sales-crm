@@ -65,7 +65,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
       <div className="space-y-3.5">
         {/* Title */}
         <div>
-          <label className="block text-[11px] font-bold text-slate-500 mb-1">미팅 제목 / 영업 아젠다</label>
+          <label className="block text-[11px] font-bold text-slate-400 mb-1">미팅 제목 / 영업 아젠다</label>
           <input
             type="text"
             required
@@ -79,7 +79,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
         {/* Cross-selling Solution and Proposing Team dropdown selections */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">제안 제품 솔루션</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">제안 제품 솔루션</label>
             <select
               value={solutionId}
               onChange={(e) => {
@@ -99,7 +99,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">업무 추진 부서 (팀)</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">업무 추진 부서 (팀)</label>
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
@@ -116,7 +116,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
         {/* Brand & Related Contact */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">대상 브랜드(고객사)</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">대상 브랜드(고객사)</label>
             <select
               required
               value={brandId}
@@ -136,7 +136,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-[11px] font-bold text-slate-500">담당 오너/대화 실무진</label>
+              <label className="block text-[11px] font-bold text-slate-400">담당 오너/대화 실무진</label>
               <button 
                 type="button" 
                 onClick={() => setIsNewContact(!isNewContact)}
@@ -174,7 +174,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
         {/* Date / Time & Online / Offline selection */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">날짜 및 시간</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">날짜 및 시간</label>
             <input
               type="datetime-local"
               required
@@ -185,13 +185,13 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">회의 대면 형태</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">회의 대면 형태</label>
             <div className="grid grid-cols-2 p-0.5 bg-slate-100 rounded-xl">
               <button
                 type="button"
                 onClick={() => setType('Offline')}
                 className={`py-1.5 text-[10px] font-semibold rounded-lg transition-all ${
-                  type === 'Offline' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500'
+                  type === 'Offline' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-400'
                 }`}
               >
                 대면 (Offline)
@@ -200,7 +200,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
                 type="button"
                 onClick={() => setType('Online')}
                 className={`py-1.5 text-[10px] font-semibold rounded-lg transition-all ${
-                  type === 'Online' ? 'bg-white text-blue-800 shadow-xs' : 'text-slate-500'
+                  type === 'Online' ? 'bg-white text-blue-800 shadow-xs' : 'text-slate-400'
                 }`}
               >
                 화상 (Online)
@@ -212,7 +212,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
         {/* Location or Meet Link info */}
         {type === 'Offline' ? (
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">구체적 대면 현장 위치</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">구체적 대면 현장 위치</label>
             <div className="relative">
               <span className="absolute left-3 top-2.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /></span>
               <input
@@ -229,7 +229,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
             <Video className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
             <div>
               <p className="font-bold">온라인 화상 회의용 링크 생성 안내</p>
-              <p className="text-slate-500 mt-0.5">화상 미팅이 확정되면 참여 인원들에게 발송할 Zoom, Google Meet 등 고유 초대용 URL을 미팅 정보에 기록해 주십시오.</p>
+              <p className="text-slate-400 mt-0.5">화상 미팅이 확정되면 참여 인원들에게 발송할 Zoom, Google Meet 등 고유 초대용 URL을 미팅 정보에 기록해 주십시오.</p>
             </div>
           </div>
         )}
@@ -237,7 +237,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
         {/* Pipeline & Google Sync triggers */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">세일즈 파이프라인 진행 상태</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">세일즈 파이프라인 진행 상태</label>
             <select
               value={pipelineStatus}
               onChange={(e) => setPipelineStatus(e.target.value as PipelineStatus)}
@@ -255,7 +255,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
 
         {/* Ref notes */}
         <div>
-          <label className="block text-[11px] font-bold text-slate-500 mb-1">미팅 사전 지참 서류 및 쟁점사항 (Notes)</label>
+          <label className="block text-[11px] font-bold text-slate-400 mb-1">미팅 사전 지참 서류 및 쟁점사항 (Notes)</label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

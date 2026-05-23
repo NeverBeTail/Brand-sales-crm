@@ -181,10 +181,10 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
           <h3 className="text-base font-black text-slate-900">🔒 기업 내부 보안 및 정보 감사 열람 통제</h3>
           <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wider">Access Level Required: [Super Admin] or [Active Permit Switch]</p>
         </div>
-        <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
+        <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
           본 감사 이력 타임라인(Audit Log)은 영업 기밀 유출 방지 및 파이프라인 무단 수정을 실시간 관제하는 내부 관리 화면입니다. 슈퍼 어드민 계정 또는 해당 기능 개방 허가를 얻은 일반 유저에 한해 대시보드가 오픈됩니다.
         </p>
-        <div className="bg-slate-50 p-4 rounded-2xl text-[11px] font-medium text-slate-500 leading-relaxed border border-slate-100 text-left space-y-2">
+        <div className="bg-slate-50 p-4 rounded-2xl text-[11px] font-medium text-slate-400 leading-relaxed border border-slate-100 text-left space-y-2">
           <p className="font-bold text-slate-700">💡 정보 획득 안내:</p>
           <p>화면 상단의 <span className="font-bold text-slate-800">일반 사용자 계정</span>이 탐색 권한을 가질 수 있도록, 슈퍼 어드민 대시보드 내 "어드민 & 마이그레이션 - 인사 및 구성원" 패널에서 본 계정에 대한 <strong>감사 로그 조회 권한 스위치</strong>를 활성화해 주시면 승인 즉시 열람이 인가됩니다.</p>
         </div>
@@ -228,7 +228,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
               activeSubTab === 'timeline' 
                 ? 'bg-white text-slate-850 shadow-3xs' 
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             기밀 변경 타임라인
@@ -238,7 +238,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
               activeSubTab === 'backups' 
                 ? 'bg-white text-slate-850 shadow-3xs' 
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             PostgreSQL 새벽 백업
@@ -248,7 +248,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
               activeSubTab === 'sentry' 
                 ? 'bg-white text-slate-850 shadow-3xs' 
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             Sentry 에러 디포그
@@ -295,7 +295,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
               {/* Refresh Button */}
               <button
                 onClick={onRefresh}
-                className="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer flex items-center justify-center text-slate-500"
+                className="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer flex items-center justify-center text-slate-400"
                 title="감시 로그 새로고침"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -335,7 +335,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
                           }`}>
                             {log.userRole === 'Admin' ? 'Super Admin 최고관리자' : 'Normal User 일반사용자'}
                           </span>
-                          <span className="text-slate-300">|</span>
+                          <span className="text-slate-600">|</span>
                           <span className="text-[10px] text-slate-400 font-bold font-mono">UUID: {log.userId}</span>
                         </div>
 
@@ -351,11 +351,11 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
 
                       {/* Log Body Details */}
                       <div className="space-y-1.5">
-                        <p className="text-[11.5px] text-slate-500 font-bold leading-none flex items-center gap-1.5">
+                        <p className="text-[11.5px] text-slate-400 font-bold leading-none flex items-center gap-1.5">
                           <span className="text-slate-400 font-sans uppercase text-[10px]">감사 타깃:</span>
                           <span className="text-slate-900 font-black">{log.targetName}</span>
                           {log.targetType && (
-                            <span className="text-[9.5px] px-1 bg-slate-100 text-slate-500 rounded font-bold">{log.targetType}</span>
+                            <span className="text-[9.5px] px-1 bg-slate-100 text-slate-400 rounded font-bold">{log.targetType}</span>
                           )}
                         </p>
                         <div className="bg-slate-55 p-3 rounded-xl border border-slate-100 mt-1">
@@ -408,7 +408,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
 
               <button
                 onClick={fetchBackups}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-extrabold text-slate-500 bg-slate-55 border border-slate-150 hover:bg-slate-100 transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-extrabold text-slate-400 bg-slate-55 border border-slate-150 hover:bg-slate-100 transition-all cursor-pointer"
               >
                 <RefreshCw className="w-3 h-3 text-slate-400" />
                 <span>스토리지 입적 상태 갱신</span>
@@ -468,7 +468,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
                       </div>
                     </div>
 
-                    <div className="bg-white p-2.5 rounded-xl border border-slate-100 mt-3 text-[11px] text-slate-500 font-medium leading-relaxed">
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-100 mt-3 text-[11px] text-slate-400 font-medium leading-relaxed">
                       {bk.details}
                     </div>
                   </div>
@@ -528,8 +528,8 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
 
           {/* Simulated Sentry incident board */}
           {latestSentryEvent && (
-            <div className="bg-[#1E1E2E] text-slate-100 rounded-3xl p-5 sm:p-6 shadow-xl border border-rose-950 space-y-4 font-mono animate-fadeIn">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 border-b border-slate-800 pb-3">
+            <div className="bg-[#1E1E2E] text-slate-900 rounded-3xl p-5 sm:p-6 shadow-xl border border-rose-950 space-y-4 font-mono animate-fadeIn">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 border-b border-[#03C75A]/10 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-3 h-3 rounded-full bg-rose-500 animate-ping shrink-0" />
                   <div>
@@ -559,7 +559,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 text-[11px]">
-                  <div className="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800">
+                  <div className="bg-white/70/50 p-2.5 rounded-xl border border-[#03C75A]/10">
                     <span className="text-slate-450 block text-[9px] uppercase tracking-wide">Alert Notification Status:</span>
                     <span className="text-emerald-400 font-black flex items-center gap-1.5 mt-1">
                       <CheckCircle className="w-3.5 h-3.5 inline text-emerald-400" />
@@ -567,9 +567,9 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
                     </span>
                   </div>
 
-                  <div className="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800">
+                  <div className="bg-white/70/50 p-2.5 rounded-xl border border-[#03C75A]/10">
                     <span className="text-slate-450 block text-[9px] uppercase tracking-wide">Local Time Recorded:</span>
-                    <span className="text-slate-300 font-black mt-1 block">
+                    <span className="text-slate-600 font-black mt-1 block">
                       {new Date(latestSentryEvent.timestamp).toLocaleString('ko-KR')}
                     </span>
                   </div>

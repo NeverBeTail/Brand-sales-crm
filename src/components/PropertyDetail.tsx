@@ -142,7 +142,7 @@ export default function PropertyDetail({
     return brandSolutions.filter(bs => bs.brandId === selectedProperty.id && bs.pipelineStatus === "Deal Completed");
   }, [brandSolutions, selectedProperty]);
 
-  const activeBr solnsPercent = useMemo(() => {
+  const activeBrandSolutionsPercent = useMemo(() => {
     if (solutions.length === 0) return 0;
     return Math.round((adoptedSolutions.length / 4) * 100);
   }, [adoptedSolutions, solutions]);
@@ -232,7 +232,7 @@ export default function PropertyDetail({
       </AnimatePresence>
 
       {/* Property Selection Center & Visual Top Banner */}
-      <div className="glass-panel rounded-[32px] border border-white/50 p-6 sm:p-7 shadow-sm bg-gradient-to-r from-white via-white to-emerald-50/15 flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+      <div className="glass-panel rounded-[32px] border border-[#03C75A]/100 p-6 sm:p-7 shadow-sm bg-gradient-to-r from-white via-white to-emerald-50/15 flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
         {/* Decorative dynamic ambient glow */}
         <div className="absolute right-0 top-0 w-36 h-36 bg-emerald-400/5 rounded-full filter blur-2xl pointer-events-none" />
         
@@ -271,7 +271,7 @@ export default function PropertyDetail({
               </div>
             </div>
           </div>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-400 font-medium">
             프랜차이즈 가맹 본사의 법인 세부 프로필, 핵심 키맨(Stakeholders), 실시간 음성/텍스트 상담 미팅 이력을 종결 제어합니다.
           </p>
         </div>
@@ -284,9 +284,9 @@ export default function PropertyDetail({
               {adoptedSolutions.length === 4 ? "🟢 4/4 전종결 완료" : `⏳ ${adoptedSolutions.length}/4 교차판매 진행중`}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-full border-4 border-slate-100 flex items-center justify-center font-black text-[11px] text-[#01893d] bg-emerald-50" style={{ backgroundImage: `conic-gradient(#03C75A ${activeBr solnsPercent}%, #f1f5f9 ${activeBr solnsPercent}% 100%)`, border: "none" }}>
+          <div className="w-12 h-12 rounded-full border-4 border-slate-100 flex items-center justify-center font-black text-[11px] text-[#01893d] bg-emerald-50" style={{ backgroundImage: `conic-gradient(#03C75A ${activeBrandSolutionsPercent}%, #f1f5f9 ${activeBrandSolutionsPercent}% 100%)`, border: "none" }}>
             <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[10px] font-black">
-              {activeBr solnsPercent}%
+              {activeBrandSolutionsPercent}%
             </div>
           </div>
         </div>
@@ -408,7 +408,7 @@ export default function PropertyDetail({
                       className={`p-3 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
                         adopted 
                           ? "bg-emerald-50/40 border-emerald-150 text-emerald-950" 
-                          : "bg-slate-50 border-slate-150/50 text-slate-500"
+                          : "bg-slate-50 border-slate-150/50 text-slate-400"
                       }`}
                     >
                       <div className="space-y-0.5">
@@ -593,7 +593,7 @@ export default function PropertyDetail({
                           </div>
                         </div>
 
-                        <div className="space-y-1.5 text-[10.5px] text-slate-500 font-medium pt-2 border-t border-dashed border-slate-150">
+                        <div className="space-y-1.5 text-[10.5px] text-slate-400 font-medium pt-2 border-t border-dashed border-slate-150">
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1">
                               <Phone className="w-3 h-3 text-slate-400" />
@@ -670,7 +670,7 @@ export default function PropertyDetail({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-1">
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-500">대화/미팅 주제 (필수)</label>
+                        <label className="text-[9px] font-bold text-slate-400">대화/미팅 주제 (필수)</label>
                         <input 
                           type="text" 
                           required 
@@ -681,7 +681,7 @@ export default function PropertyDetail({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-500">일시 세팅</label>
+                        <label className="text-[9px] font-bold text-slate-400">일시 세팅</label>
                         <input 
                           type="datetime-local" 
                           required 
@@ -694,7 +694,7 @@ export default function PropertyDetail({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-1">
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-500">미팅 포맷 구분</label>
+                        <label className="text-[9px] font-bold text-slate-400">미팅 포맷 구분</label>
                         <select
                           value={newMeeting.type}
                           onChange={(e) => setNewMeeting({ ...newMeeting, type: e.target.value as any })}
@@ -708,7 +708,7 @@ export default function PropertyDetail({
                       <div className="space-y-1">
                         {newMeeting.type === "Offline" ? (
                           <>
-                            <label className="text-[9px] font-bold text-slate-500">대면 미팅 장소</label>
+                            <label className="text-[9px] font-bold text-slate-400">대면 미팅 장소</label>
                             <input 
                               type="text" 
                               placeholder="광화문 그랑서울 마케팅센터" 
@@ -719,7 +719,7 @@ export default function PropertyDetail({
                           </>
                         ) : (
                           <>
-                            <label className="text-[9px] font-bold text-slate-500">구글 미트 온라인 화상방 링크</label>
+                            <label className="text-[9px] font-bold text-slate-400">구글 미트 온라인 화상방 링크</label>
                             <input 
                               type="url" 
                               placeholder="https://meet.google.com/abc-defg-hij" 
@@ -733,7 +733,7 @@ export default function PropertyDetail({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-500">미팅 상세 상담 이력 대본 및 노트</label>
+                      <label className="text-[9px] font-bold text-slate-400">미팅 상세 상담 이력 대본 및 노트</label>
                       <textarea 
                         rows={2}
                         placeholder="전반적인 가맹 제안 방향에 관한 핵심 요소를 자유롭게 적어 주세요." 
@@ -744,7 +744,7 @@ export default function PropertyDetail({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-500">최종 스마트 결론 한줄 요약 (CRM 에 게재할 핵심요약)</label>
+                      <label className="text-[9px] font-bold text-slate-400">최종 스마트 결론 한줄 요약 (CRM 에 게재할 핵심요약)</label>
                       <input 
                         type="text" 
                         placeholder="이 가맹사 담당 실장이 기술 지원 위약금 소급 적용 팩 보강을 요건으로 교차 수주에 호의적인 단계임." 
@@ -755,7 +755,7 @@ export default function PropertyDetail({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-500">후속 조치 액션 아이템 (매 줄당 한 건씩 기입)</label>
+                      <label className="text-[9px] font-bold text-slate-400">후속 조치 액션 아이템 (매 줄당 한 건씩 기입)</label>
                       <textarea 
                         rows={2}
                         placeholder="예:&#13;위약금 면제 서류 본부장 전결 기안 상책&#13;예약 연동 기술 호환성 비교 테이블 메일 발송" 
@@ -789,19 +789,19 @@ export default function PropertyDetail({
                 <div className="flex bg-slate-100 p-1 rounded-xl self-start border border-slate-150 text-[10.5px]">
                   <button
                     onClick={() => setMeetingFilter("all")}
-                    className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer ${meetingFilter === "all" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-900"}`}
+                    className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer ${meetingFilter === "all" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-400 hover:text-slate-900"}`}
                   >
                     일체 목록
                   </button>
                   <button
                     onClick={() => setMeetingFilter("online")}
-                    className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer ${meetingFilter === "online" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-900"}`}
+                    className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer ${meetingFilter === "online" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-400 hover:text-slate-900"}`}
                   >
                     비대면 화상
                   </button>
                   <button
                     onClick={() => setMeetingFilter("offline")}
-                    className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer ${meetingFilter === "offline" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-900"}`}
+                    className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer ${meetingFilter === "offline" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-400 hover:text-slate-900"}`}
                   >
                     현장 대면
                   </button>

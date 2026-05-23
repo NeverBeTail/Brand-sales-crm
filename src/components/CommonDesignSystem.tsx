@@ -134,7 +134,7 @@ export function CardView({
         {children}
       </div>
       {footer && (
-        <div className="border-t border-slate-50 pt-4 mt-4 text-xs text-slate-500">
+        <div className="border-t border-slate-50 pt-4 mt-4 text-xs text-slate-400">
           {footer}
         </div>
       )}

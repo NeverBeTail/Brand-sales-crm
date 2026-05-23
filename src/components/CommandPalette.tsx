@@ -120,7 +120,7 @@ export default function CommandPalette({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] p-4 bg-slate-950/40 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] p-4 bg-white/60/40 backdrop-blur-[2px]">
       {/* Click outside backdrop */}
       <div className="fixed inset-0 -z-10" onClick={onClose} />
 
@@ -181,7 +181,7 @@ export default function CommandPalette({
                       <div className={`p-1.5 rounded-lg shrink-0 ${
                         isFocused 
                           ? 'bg-white/10 text-white' 
-                          : 'bg-slate-100 text-slate-500'
+                          : 'bg-slate-100 text-slate-400'
                       }`}>
                         {type === 'view' && <item.icon className="w-4 h-4" />}
                         {type === 'brand' && <Building2 className="w-4 h-4" />}
@@ -215,7 +215,7 @@ export default function CommandPalette({
                       <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${
                         isFocused 
                           ? 'bg-white/20 text-white' 
-                          : 'bg-slate-150 text-slate-500'
+                          : 'bg-slate-150 text-slate-400'
                       }`}>
                         {type === 'view' ? '이동' : type === 'brand' ? '거래처 360' : type === 'contact' ? '바이어' : '일정'}
                       </span>

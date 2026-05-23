@@ -227,7 +227,7 @@ export default function PipelineBoard({
   };
 
   return (
-    <div className="glass-card rounded-[32px] border border-white/50 p-6 shadow-sm space-y-6">
+    <div className="glass-card rounded-[32px] border border-[#03C75A]/100 p-6 shadow-sm space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
           <h3 className="font-extrabold text-[#111827] text-sm sm:text-base flex items-center gap-1.5">
@@ -255,7 +255,7 @@ export default function PipelineBoard({
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewType === 'brand'
                   ? 'bg-white text-indigo-700 shadow-3xs font-black'
-                  : 'text-slate-500 hover:text-slate-800'
+                  : 'text-slate-400 hover:text-slate-800'
               }`}
             >
               🏢 고유 브랜드 단위
@@ -265,7 +265,7 @@ export default function PipelineBoard({
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewType === 'product'
                   ? 'bg-white text-indigo-700 shadow-3xs font-black'
-                  : 'text-slate-500 hover:text-slate-800'
+                  : 'text-slate-400 hover:text-slate-800'
               }`}
             >
               🔌 제안 프로덕트 단위
@@ -275,7 +275,7 @@ export default function PipelineBoard({
 
         {viewType === 'product' && solutions && solutions.length > 0 && (
           <div className="flex flex-wrap items-center gap-1 animate-fadeIn">
-            <span className="text-[11px] font-extrabold text-slate-500 mr-1 flex items-center gap-1">
+            <span className="text-[11px] font-extrabold text-slate-400 mr-1 flex items-center gap-1">
               <Briefcase className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
               <span>프로덕트 세밀 매니저:</span>
             </span>
@@ -431,7 +431,7 @@ export default function PipelineBoard({
                                     ? 'bg-amber-50 text-amber-850 border-amber-250 hover:bg-amber-100/50'
                                     : status === 'First Meeting'
                                     ? 'bg-blue-50 text-blue-850 border-blue-250 hover:bg-blue-100/50'
-                                    : 'bg-slate-55 text-slate-500 border-slate-200/70 hover:bg-slate-100/80'
+                                    : 'bg-slate-55 text-slate-400 border-slate-200/70 hover:bg-slate-100/80'
                                 }`}
                               >
                                 <option value="Cold Call">📞 콜드콜 접촉</option>
@@ -453,7 +453,7 @@ export default function PipelineBoard({
                               style={{ width: `${ratioPercent}%` }}
                             ></div>
                           </div>
-                          <span className={`text-[9.5px] font-black ${closedCount === 4 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                          <span className={`text-[9.5px] font-black ${closedCount === 4 ? 'text-emerald-600' : 'text-slate-400'}`}>
                             {closedCount === 4 ? '도입종결 🏆' : `${ratioPercent}% (${closedCount}/4)`}
                           </span>
                         </div>
@@ -541,7 +541,7 @@ export default function PipelineBoard({
 
                 {/* Salesforce Dynamic Weighted Deal Value Forecast */}
                 {stageItems.length > 0 && (
-                  <div className="flex items-center justify-between text-[8px] text-slate-500 font-mono mt-0.5 bg-white/50 px-2 py-1 rounded-xl border border-slate-100/40">
+                  <div className="flex items-center justify-between text-[8px] text-slate-400 font-mono mt-0.5 bg-white/50 px-2 py-1 rounded-xl border border-slate-100/40">
                     <span className="font-bold">가중 기댓값 (Est)</span>
                     <span className="font-extrabold text-indigo-700">
                       ₩{(() => {
@@ -660,14 +660,14 @@ export default function PipelineBoard({
                               </span>
                               
                               {!isZenMode && (
-                                <span className="text-[8px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded">
+                                <span className="text-[8px] bg-slate-100 text-slate-400 font-bold px-1.5 py-0.5 rounded">
                                   {brand.targetStoresCount}개점
                                 </span>
                               )}
                             </div>
                           </div>
 
-                        <div className="space-y-1.5 text-[10px] text-slate-500 font-sans">
+                        <div className="space-y-1.5 text-[10px] text-slate-400 font-sans">
                           {/* Hide description and est values in Zen mode for subtracted modernist look */}
                           {!isZenMode && (
                             <>
@@ -775,7 +775,7 @@ export default function PipelineBoard({
                             className={`p-1 px-1.5 text-[8px] font-extrabold rounded-md disabled:opacity-30 transition-all flex items-center gap-0.5 cursor-pointer ${
                               isZenMode 
                                 ? "text-slate-400 hover:text-slate-600 hover:bg-slate-50/50" 
-                                : "text-slate-500 hover:bg-slate-100"
+                                : "text-slate-400 hover:bg-slate-100"
                             }`}
                             title="이전 단계로 변경"
                           >

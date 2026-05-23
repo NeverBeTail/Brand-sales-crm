@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+replace-helper*
+test-*.cjs
+test-*.js

@@ -7,11 +7,25 @@ import {
   Bot, ShieldCheck, Clock, Wrench, BookOpen
 } from 'lucide-react';
 
-import { Brand, Contact, Meeting, SyncStatus, PipelineStatus, Solution, BrandSolution } from './types';
+// 타입
+import type { Brand, Contact, Meeting, PipelineStatus, Solution, BrandSolution, ViewMode, AuditLog, NewBrandFormData, AIAnalysisResult, EmailDraft } from './types';
+
+// 커스텀 훅
+import { useAuth } from './hooks/useAuth';
+import { useNotifications } from './hooks/useNotifications';
+import { useFirestoreSync } from './hooks/useFirestoreSync';
+import { useCalendarSync } from './hooks/useCalendarSync';
+
+// 유틸리티 & 상수
+import { withTimeout, getPipelineProgress, getPipelineIndex } from './lib/utils';
+import { PIPELINE_STAGES, SOLUTION_NAMES, VIEW_MODE_LABELS, INITIAL_BRAND_FORM, SUPER_ADMIN_EMAIL } from './constants';
+
+// Firebase (일부 핸들러에서 직접 사용)
 import { loginWithGoogle, logout as firebaseLogout, auth, db } from './lib/firebase';
-import { createGoogleCalendarEvent, deleteGoogleCalendarEvent, listGoogleCalendarEvents } from './lib/googleCalendar';
-import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { deleteGoogleCalendarEvent } from './lib/googleCalendar';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
+
+// 컴포넌트
 import BrandHistoryTimeline from './components/BrandHistoryTimeline';
 import MeetingForm from './components/MeetingForm';
 import VoiceRecorder from './components/VoiceRecorder';
@@ -28,134 +42,53 @@ import UserGuide from './components/UserGuide';
 import PropertyDetail from './components/PropertyDetail';
 import { motion, AnimatePresence } from 'motion/react';
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('[FIRESTORE COMPLIANCE ERROR] ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 1800): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
-    )
-  ]);
-};
-
 
 export default function App() {
-  // Primary States
+  // ── 핵심 데이터 상태 ──
   const [brands, setBrands] = useState<Brand[]>([]);
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [brandSolutions, setBrandSolutions] = useState<BrandSolution[]>([]);
-  const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+  const [syncStatus, setSyncStatus] = useState<{ lastSynced: string | null; syncedEventsCount: number; isSyncing: boolean }>({
     lastSynced: null,
     syncedEventsCount: 0,
     isSyncing: false
   });
 
+  // ── UI 상태 ──
   const [selectedBrandId, setSelectedBrandId] = useState<string>('brand-1');
-  const [isAddingMeeting, setIsAddingMeeting] = useState<boolean>(false);
-  const [isAddingBrand, setIsAddingBrand] = useState<boolean>(false);
-  const [newBrandForm, setNewBrandForm] = useState({
-    name: '',
-    category: 'F&B Brand' as any,
-    headquarters: '',
-    description: '',
-    targetStoresCount: 5,
-    monthlyRevenueEst: '월 평균 1억원 규모 예상',
-    pipelineStatus: 'Cold Call' as any,
-    contactName: '',
-    contactRole: '브랜드 본사 담당자' as any,
-    contactPosition: '담당 바이어',
-    contactPhone: '',
-    contactEmail: ''
-  });
-  const [isSyncingCalendar, setIsSyncingCalendar] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [viewMode, setViewMode] = useState<'profile' | 'pipeline' | 'analytics' | 'audit' | 'chatbot' | 'admin' | 'backlog' | 'guide' | 'property-detail'>('profile');
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [isAddingMeeting, setIsAddingMeeting] = useState(false);
+  const [isAddingBrand, setIsAddingBrand] = useState(false);
+  const [newBrandForm, setNewBrandForm] = useState<NewBrandFormData>({ ...INITIAL_BRAND_FORM });
+  const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('profile');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Active AI recording output session
-  const [aiAnalysisResult, setAiAnalysisResult] = useState<{
-    transcript: string;
-    summary: string;
-    actionItems: string[];
-  } | null>(null);
-
-  // Phase 6 Proactive AI Email Generator States
-  const [emailDraft, setEmailDraft] = useState<{ subject: string; body: string } | null>(null);
-  const [isGeneratingEmail, setIsGeneratingEmail] = useState<boolean>(false);
-  const [copiedEmail, setCopiedEmail] = useState<boolean>(false);
+  // ── AI 분석 & 이메일 생성 ──
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<AIAnalysisResult | null>(null);
+  const [emailDraft, setEmailDraft] = useState<EmailDraft | null>(null);
+  const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
   const [crossSellingWarning, setCrossSellingWarning] = useState<string | null>(null);
-  const [sync360Trigger, setSync360Trigger] = useState<number>(0);
+  const [sync360Trigger, setSync360Trigger] = useState(0);
 
-  // Phase 7: CRM In-App Notifications & Global Intelligent Search States
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<{ brands: any[], contacts: any[], meetings: any[] } | null>(null);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  // ── 알림 ──
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
 
-  // Phase border
-  // Phase 8: Enterprise RBAC, Soft Delete Protective Layer & Auditor Timeline Channels
+  // ── RBAC & 인증 ──
   const [userRole, setUserRole] = useState<'Admin' | 'Sales_Rep'>('Admin');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
   const [rbacError, setRbacError] = useState<string | null>(null);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
   
-  // Real Multi-user Sync: Firestore approved_users and CRUD managers
-  const [approvedUsers, setApprovedUsers] = useState<any[]>([]);
+  // ── 사용자 관리 ──
+  const [approvedUsers, setApprovedUsers] = useState<ApprovedUser[]>([]);
   const matchedProfile = approvedUsers.find(u => u.email.toLowerCase() === loginEmail.toLowerCase());
 
   const canEditPipeline = userRole === 'Admin' || (matchedProfile?.canEditPipeline !== undefined 
@@ -1311,7 +1244,7 @@ export default function App() {
             </div>
             <div>
               <h3 className="text-base font-black text-slate-905">📬 B2B CRM 연동 개발 로드맵 및 백로그 가두리</h3>
-              <p className="text-xs text-slate-500 mt-1 lines-normal">
+              <p className="text-xs text-slate-400 mt-1 lines-normal">
                 본부 업무 몰입도를 높이고 프로덕션 환경을 깔끔하게 유지하기 위해, 미개발/외연 동기화(구글 캘린더, 슬랙 연동, 수동 인바운드 웹훅 유입) 통제 항목들은 백로그 지형에 안전하게 격리되어 있습니다.
               </p>
             </div>
@@ -1331,13 +1264,13 @@ export default function App() {
               <Calendar className="w-4 h-4 text-emerald-600" />
               <span>동기 구글 캘린더 실시간 양방향 전송 체제</span>
             </h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               본부 미팅 선약이 완료되면, 담당 세일즈맨과 제휴사 담당자의 구글 캘린더에 실시간으로 일정을 전송하고 Google Meet 참여 URL을 자동 탑재해 줍니다.
             </p>
             
             <div className="border-t border-slate-100/80 pt-4 space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-bold">Google 연동 상태:</span>
+                <span className="text-slate-400 font-bold">Google 연동 상태:</span>
                 {googleAccessToken ? (
                   <span className="text-emerald-600 font-bold flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -1399,12 +1332,12 @@ export default function App() {
               <Sparkles className="w-4 h-4 text-indigo-600" />
               <span>Typeform 외부 리드 유입 API 연동</span>
             </h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               본사 제휴 랜딩 및 외부 설문 입력창 접수 시 대외비 보안 토큰을 수반하여 가망 거래처의 성명, 매장 규모 등의 데이터가 자동으로 칸반 Cold Call 단계로 인바운드 접수 처리되는 구조입니다.
             </p>
             
             <div className="border-t border-slate-101 pt-4 space-y-2.5">
-              <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-[10px] font-mono text-slate-500 leading-normal overflow-x-auto">
+              <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-[10px] font-mono text-slate-400 leading-normal overflow-x-auto">
                 로컬 API: <code>/api/webhooks/inbound-lead</code>
               </div>
 
@@ -1439,12 +1372,12 @@ export default function App() {
               <span className="text-rose-500">⚡</span>
               <span>Slack Webhook 거래처 진전 현황 실시간 동보 전송</span>
             </h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               사내 특정 채널 (예: <code>#sales-deal-room</code>)로 빅딜 완료 혹은 파이프라인 협상 단계 가치가 실시간 변동될 때 영업 성과 비동기 푸시 알림을 자동 발송하는 기술입니다.
             </p>
             
             <div className="border-t border-slate-101 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="bg-slate-50/50 p-2.5 rounded-xl text-[10px] font-mono text-slate-500 leading-relaxed flex-1">
+              <div className="bg-slate-50/50 p-2.5 rounded-xl text-[10px] font-mono text-slate-400 leading-relaxed flex-1">
                 Webhook URL: <code>https://hooks.slack.com/services/T00000000/B00000000/...</code>
               </div>
 
@@ -1485,31 +1418,31 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans">
-        {/* Ambient background glows for glassmorphism layout depth */}
-        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-[#03C75A]/10 rounded-full filter blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-400/8 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans bg-[#f0f4f0]">
+        {/* Ambient background glows for premium glassmorphic depth */}
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-[#03C75A]/12 rounded-full filter blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#1eca6b]/8 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         
-        <div className="glass-card p-8 rounded-[36px] max-w-sm w-full space-y-6 relative z-10 shadow-xl text-center animate-fadeIn border border-white/50 bg-white">
+        <div className="glass-card p-9 rounded-[32px] max-w-sm w-full space-y-6 relative z-10 shadow-2xl text-center animate-fadeIn border border-[#03C75A]/10">
           <div className="space-y-2">
-            <div className="w-14 h-14 bg-gradient-to-tr from-[#03C75A] to-[#10b981] text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md shadow-[#03C75A]/25">
+            <div className="w-14 h-14 bg-gradient-to-tr from-[#03C75A] to-[#1eca6b] text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#03C75A]/20">
               <Building2 className="w-6.5 h-6.5" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">B2B Sales CRM</h1>
-            <p className="text-xs text-slate-500 font-bold leading-normal">영업 파이프라인 관리 시스템 로그인</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">B2B Sales CRM</h1>
+            <p className="text-xs text-slate-400 font-bold leading-normal">영업 파이프라인 관리 시스템 로그인</p>
           </div>
           
           {rbacError && (
-            <div className="bg-rose-50 border border-rose-100/80 text-rose-800 rounded-2xl p-3.5 text-[11px] font-bold text-left leading-relaxed animate-fadeIn">
+            <div className="bg-rose-50 border border-rose-200 text-rose-600 rounded-2xl p-4 text-[11px] font-bold text-left leading-relaxed animate-fadeIn">
               <span className="text-rose-500 font-black block mb-1">⚠️ 보안 통제 안내</span>
               {rbacError}
             </div>
           )}
           
-          <form onSubmit={handleLogin} className="space-y-3 pt-1">
+          <form onSubmit={handleLogin} className="space-y-3.5 pt-1">
             <button 
               type="submit"
-              className="w-full py-4 bg-[#03C75A] hover:bg-[#029a45] active:scale-[0.98] text-white rounded-2xl font-black text-xs sm:text-[13px] tracking-wide transition-all shadow-md shadow-[#03C75A]/20 flex items-center justify-center gap-2.5 cursor-pointer"
+              className="w-full py-3.5 bg-gradient-to-r from-[#03C75A] to-[#02b351] hover:brightness-110 active:scale-[0.98] text-white rounded-2xl font-black text-xs sm:text-[13px] tracking-wide transition-all shadow-md shadow-[#03C75A]/15 flex items-center justify-center gap-2.5 cursor-pointer border border-[#03C75A]/25"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="currentColor"/>
@@ -1519,7 +1452,7 @@ export default function App() {
               </svg>
               <span>Google 계정으로 로그인</span>
             </button>
-
+ 
             <button 
               type="button"
               onClick={() => {
@@ -1527,13 +1460,13 @@ export default function App() {
                 setLoginEmail('rudals5569@gmail.com');
                 setUserRole('Admin');
               }}
-              className="w-full py-4 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 rounded-2xl font-extrabold text-xs sm:text-[13px] tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer border border-slate-200/60"
+              className="w-full py-3.5 bg-white/40 hover:bg-white/60 hover:border-[#03C75A]/25 active:scale-[0.98] text-slate-700 rounded-2xl font-extrabold text-xs sm:text-[13px] tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#03C75A]/15"
             >
               <span>데모 모드로 바로 시작하기 ⚡</span>
             </button>
           </form>
           
-          <div className="border-t border-slate-200/50 pt-4">
+          <div className="border-t border-[#03C75A]/10 pt-4">
             <p className="text-center text-[10px] text-slate-400 font-bold tracking-wider">
               © 2026 Sales CRM System. All rights reserved.
             </p>
@@ -1544,18 +1477,18 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-slate-800 flex antialiased overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#f0f4f0] text-slate-800 flex antialiased overflow-hidden font-sans">
       
       {/* 1. Collapsible Left Sidebar (LNB) for Desktop Work Speed & Context Retention */}
       <aside 
-        className={`backdrop-blur-xl bg-white/75 text-slate-705 border-r border-[#03C75A]/15 flex flex-col justify-between transition-all duration-300 z-30 shrink-0 select-none shadow-[4px_0_24px_rgba(3,199,90,0.02)] ${
+        className={`backdrop-blur-2xl bg-white/60 text-slate-500 border-r border-[#03C75A]/10 flex flex-col justify-between transition-all duration-300 z-30 shrink-0 select-none shadow-[4px_0_30px_rgba(3,199,90,0.06)] ${
           isSidebarCollapsed ? "w-16" : "w-64"
         }`}
       >
         <div className="flex flex-col">
           {/* Sidebar Header Title / logo */}
-          <div className="p-4 border-b border-indigo-50/70 flex items-center gap-3">
-            <div className="p-2 bg-[#03C75A]/10 rounded-xl text-[#01893d] shrink-0">
+          <div className="p-4 border-b border-[#03C75A]/10 flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-[#03C75A]/25 to-[#1eca6b]/25 rounded-xl text-[#03C75A] shrink-0">
               <Building2 className="w-5 h-5" />
             </div>
             {!isSidebarCollapsed && (
@@ -1569,18 +1502,18 @@ export default function App() {
               </div>
             )}
           </div>
-
+ 
           {/* Quick User Identity Badge */}
-          <div className="p-3 border-b border-indigo-50/70 bg-slate-50/50 flex items-center gap-2.5">
+          <div className="p-3 border-b border-[#03C75A]/10 bg-white/40 flex items-center gap-2.5">
             {matchedProfile?.avatarUrl ? (
               <img 
                 src={matchedProfile.avatarUrl} 
                 alt={matchedProfile.name || loginEmail}
                 referrerPolicy="no-referrer"
-                className="w-7 h-7 rounded-lg object-cover border border-slate-200 shadow-3xs shrink-0"
+                className="w-7 h-7 rounded-lg object-cover border border-[#03C75A]/15 shadow-lg shrink-0"
               />
             ) : (
-              <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-xs uppercase shadow-3xs shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-[#03C75A]/20 text-[#03C75A] border border-[#03C75A]/30 flex items-center justify-center font-black text-xs uppercase shadow-3xs shrink-0">
                 {(matchedProfile?.name || loginEmail).charAt(0)}
               </div>
             )}
@@ -1589,7 +1522,7 @@ export default function App() {
                 <span className="text-[11px] font-black text-slate-800 truncate w-full">
                   {matchedProfile?.name || loginEmail.split('@')[0]}
                 </span>
-                <span className="text-[8px] font-black text-[#01893d] bg-[#dafbe4]/80 px-1.5 py-0.5 rounded border border-[#c6f6d5] tracking-wide mt-1">
+                <span className="text-[8px] font-black text-[#03C75A] bg-[#03C75A]/10 px-1.5 py-0.5 rounded border border-[#03C75A]/20 tracking-wide mt-1">
                   {matchedProfile?.role || userRole}
                 </span>
               </div>
@@ -1604,7 +1537,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'profile'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <Clock className="w-4 h-4 shrink-0" />
@@ -1617,7 +1550,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'property-detail'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <Building2 className="w-4 h-4 shrink-0" />
@@ -1630,7 +1563,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'guide'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <BookOpen className="w-4 h-4 shrink-0" />
@@ -1643,7 +1576,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'pipeline'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <Trello className="w-4 h-4 shrink-0" />
@@ -1656,7 +1589,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'analytics'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <BarChart3 className="w-4 h-4 shrink-0" />
@@ -1669,7 +1602,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'chatbot'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <Bot className="w-4 h-4 shrink-0" />
@@ -1682,7 +1615,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'audit'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <FileText className="w-4 h-4 shrink-0" />
@@ -1695,7 +1628,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'admin'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <ShieldCheck className="w-4 h-4 shrink-0" />
@@ -1709,7 +1642,7 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 viewMode === 'backlog'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/5 font-medium'
               }`}
             >
               <Wrench className="w-4 h-4 shrink-0" />
@@ -1719,17 +1652,17 @@ export default function App() {
         </div>
 
         {/* Sidebar Footer with toggles and collapsible trigger */}
-        <div className="p-3 border-t border-indigo-50/70 bg-slate-50/30 space-y-3 shrink-0">
+        <div className="p-3 border-t border-[#03C75A]/10 bg-white/40 space-y-3 shrink-0">
           {/* Collapsible trigger chevron button */}
           <button
             onClick={toggleSidebar}
-            className="w-full h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-lg border border-slate-200 transition-colors cursor-pointer font-black"
+            className="w-full h-8 flex items-center justify-center bg-white/50 hover:bg-white/70 text-slate-400 hover:text-slate-800 rounded-lg border border-[#03C75A]/10 transition-colors cursor-pointer font-black"
             title={isSidebarCollapsed ? "메뉴 보기 늘리기" : "메뉴 보기 줄이기"}
           >
             {isSidebarCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-slate-500" />
+              <ChevronRight className="w-4 h-4 text-slate-400" />
             ) : (
-              <div className="flex items-center gap-1 text-[10px] font-black tracking-tight text-slate-500">
+              <div className="flex items-center gap-1 text-[10px] font-black tracking-tight text-slate-400">
                 <span>◀ 사이드바 접기</span>
               </div>
             )}
@@ -1741,13 +1674,13 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         
         {/* Compact Workspace Header */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-indigo-50/50 px-8 py-5.5 z-20 shrink-0 flex items-center justify-between shadow-[0_2px_12px_rgba(3,199,90,0.01)]">
-          <div className="flex items-center gap-2 text-slate-800">
+        <header className="bg-white/40 backdrop-blur-2xl border-b border-[#03C75A]/10 px-8 py-5.5 z-20 shrink-0 flex items-center justify-between shadow-[0_4px_24px_rgba(3,199,90,0.06)]">
+          <div className="flex items-center gap-2 text-slate-350">
             {/* View indicators */}
-            <span className="text-[10px] font-black text-indigo-650 bg-indigo-50 border border-indigo-150 rounded-lg px-2.5 py-1 uppercase tracking-wider font-mono">
+            <span className="text-[10px] font-black text-[#03C75A] bg-[#03C75A]/10 border border-[#03C75A]/20 rounded-lg px-2.5 py-1 uppercase tracking-wider font-mono">
               STAGE
             </span>
-            <span className="text-xs text-slate-350">/</span>
+            <span className="text-xs text-slate-500">/</span>
             <span className="text-xs font-black text-slate-900 leading-tight">
               {viewMode === 'profile' && '⏳ 실시간 프랜차이즈 거래 정합 피드'}
               {viewMode === 'guide' && '📚 B2B CRM 통합 사용 설명 가이드'}
@@ -1765,13 +1698,13 @@ export default function App() {
             {/* Command Palette Trigger Input */}
             <button 
               onClick={() => setIsCommandPaletteOpen(true)}
-              className="hidden md:flex items-center justify-between w-64 lg:w-80 px-3 py-2 bg-slate-100/85 hover:bg-slate-150 border border-slate-200/50 rounded-xl transition-all text-slate-400 text-xs text-left cursor-pointer"
+              className="hidden md:flex items-center justify-between w-64 lg:w-80 px-3 py-2 bg-white/60 hover:bg-white/50 border border-[#03C75A]/12 rounded-xl transition-all text-slate-400 text-xs text-left cursor-pointer"
             >
               <div className="flex items-center gap-2">
                 <Search className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-slate-450 text-[11px] font-medium">단축키 검색...</span>
+                <span className="text-slate-400 text-[11px] font-medium">단축키 검색...</span>
               </div>
-              <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-white border border-slate-200 rounded-lg shadow-4xs text-[8px] font-mono font-black text-slate-400">
+              <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-white/70 border border-[#03C75A]/15 rounded-lg shadow-4xs text-[8px] font-mono font-black text-slate-400">
                 <span>⌘K</span>
               </div>
             </button>
@@ -1780,9 +1713,9 @@ export default function App() {
             <button
               onClick={handleExportCsv}
               disabled={isExporting}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border bg-white border-slate-200 hover:bg-slate-50 text-slate-700 transition-all cursor-pointer"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border bg-white/70 hover:bg-white/60 text-slate-800 border-[#03C75A]/12 transition-all cursor-pointer"
             >
-              <Download className="w-3 h-3 text-indigo-500" />
+              <Download className="w-3 h-3 text-[#03C75A]" />
               <span>{isExporting ? '추출중...' : 'CSV 추출'}</span>
             </button>
 
@@ -1790,9 +1723,9 @@ export default function App() {
             <div className="relative">
               <button
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="relative p-2 rounded-xl hover:bg-slate-150 border border-slate-200 transition-all select-none cursor-pointer flex items-center justify-center bg-white"
+                className="relative p-2 rounded-xl hover:bg-white/60 border border-[#03C75A]/12 transition-all select-none cursor-pointer flex items-center justify-center bg-white/50"
               >
-                <Bell className="w-3.5 h-3.5 text-indigo-500" />
+                <Bell className="w-3.5 h-3.5 text-[#03C75A]" />
                 {notifications.some(n => !n.isRead) && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white font-black text-[9px] flex items-center justify-center rounded-full ring-2 ring-white animate-pulse">
                     {notifications.filter(n => !n.isRead).length}
@@ -1802,31 +1735,31 @@ export default function App() {
 
               {/* Notification contents panel */}
               {isNotifOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200/80 rounded-2xl shadow-xl z-50 overflow-hidden font-sans">
-                  <div className="p-3 bg-slate-50 border-b border-indigo-50/70 flex items-center justify-between">
-                    <span className="text-[10px] font-black text-indigo-600 uppercase">알림 목록 ({notifications.filter(n => !n.isRead).length})</span>
+                <div className="absolute right-0 mt-3 w-80 bg-white/70 border border-[#03C75A]/12 rounded-2xl shadow-2xl z-50 overflow-hidden font-sans glass-panel">
+                  <div className="p-3 bg-white/60 border-b border-[#03C75A]/10 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-[#03C75A] uppercase">알림 목록 ({notifications.filter(n => !n.isRead).length})</span>
                     <button
                       onClick={handleReadAllNotifications}
-                      className="text-[9px] font-bold text-slate-500 hover:text-indigo-600 bg-white border px-2 py-0.5 rounded"
+                      className="text-[9px] font-bold text-slate-400 hover:text-[#03C75A] bg-slate-850 border border-[#03C75A]/10 px-2 py-0.5 rounded"
                     >
                       전체 읽음
                     </button>
                   </div>
-                  <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                  <div className="divide-y divide-white/5 max-h-80 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="p-5 text-center text-[10.5px] text-slate-400">알림 피드가 비어있습니다.</div>
+                      <div className="p-5 text-center text-[10.5px] text-slate-400 font-bold">알림 피드가 비어있습니다.</div>
                     ) : (
                       notifications.slice(0, 10).map(n => (
                         <div 
                           key={n.id} 
                           onClick={() => handleReadNotification(n.id)}
-                          className={`p-3 text-[10.5px] hover:bg-slate-50 transition-all cursor-pointer relative ${!n.isRead ? 'bg-indigo-50/20' : ''}`}
+                          className={`p-3 text-[10.5px] hover:bg-white/5 transition-all cursor-pointer relative ${!n.isRead ? 'bg-[#03C75A]/8' : ''}`}
                         >
                           <div className="flex justify-between items-center mb-0.5">
                             <span className="font-bold text-slate-800">{n.title}</span>
                             <span className="text-[9px] text-slate-400 font-mono">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
-                          <p className="text-slate-500 leading-tight">{n.message}</p>
+                          <p className="text-slate-400 leading-tight">{n.message}</p>
                         </div>
                       ))
                     )}
@@ -1842,7 +1775,7 @@ export default function App() {
                 setLoginEmail('');
                 setLoginPassword('');
               }}
-              className="text-[10px] font-black text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100/50 rounded-xl px-2.5 py-1.5 transition-all cursor-pointer shadow-3xs"
+              className="text-[10px] font-black text-rose-455 bg-rose-950/20 border border-rose-900/30 hover:bg-rose-900/40 rounded-xl px-2.5 py-1.5 transition-all cursor-pointer shadow-3xs"
             >
               로그아웃
             </button>
@@ -1875,6 +1808,9 @@ export default function App() {
           <SalesGamification 
             userRole={userRole} 
             onGoalCompleted={fetchAuditLogs} 
+            brands={brands}
+            meetings={meetings}
+            brandSolutions={brandSolutions}
           />
           <div className="border-t border-slate-100/80 my-5" />
           <AnalyticsDashboard brands={brands} meetings={meetings} />
@@ -1909,7 +1845,7 @@ export default function App() {
               <p className="text-xs text-slate-550 leading-relaxed max-w-md">
                 현재 로그인한 영업 계정은 최고 관리자가 관리자 패널에서 설정한 개별 기능 스위치 통제 규약에 의해 <strong className="text-slate-700">[보안 감사 로그 이력]</strong> 탐색 및 조회 수급 자격이 일시 정지 상태입니다.
               </p>
-              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-500 w-full text-left">
+              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-400 w-full text-left">
                 💡 보장 내역: 사내 포렌식 이력 추적 및 탐색 권한 제한 (403 Forbidden)
               </div>
               <p className="text-[10px] text-slate-400 font-bold">
@@ -1950,7 +1886,7 @@ export default function App() {
               <p className="text-xs text-slate-550 leading-relaxed max-w-md">
                 현재 로그인한 영업 계정은 최고 관리자가 설정한 개별 개발 기능 수동 제어 규약에 의해 <strong className="text-slate-700">[Gemini 1.5 RAG 대화형 인공지능 비서]</strong> 가동 권한이 일시 제한되었습니다.
               </p>
-              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-500 w-full text-left">
+              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-400 w-full text-left">
                 💡 보장 내역: Gemini 1.5 어시스턴스, 영업 미팅 요약 및 제안 교차 기획 가이드 차단
               </div>
               <p className="text-[10px] text-slate-400 font-bold">
@@ -1993,7 +1929,7 @@ export default function App() {
               <p className="text-xs text-slate-550 leading-relaxed max-w-md">
                 현재 로그인한 협조원 계정은 최고 관리자가 지정한 개별 보안 기능 통제에 의해 <strong className="text-slate-700">[어드민 대시보드 및 마이그레이션 실행 도구]</strong> 접근권이 제한되어 있습니다.
               </p>
-              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-500 w-full text-left">
+              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-400 w-full text-left">
                 💡 보장 내역: 신규 구성원 승인 등록, 개별 스위치 조율, CSV 백업 및 데이터베이스 파기/이식 도구 통제
               </div>
               <p className="text-[10px] text-slate-400 font-bold">
@@ -2045,39 +1981,39 @@ export default function App() {
           {/* Quick Metrics (Pastel styling) - Hiding in Zen Mode for maximum breathing room and subtracted aesthetic */}
           {!isZenMode && (
             <div className="grid grid-cols-2 gap-3.5 animate-fadeIn">
-              <div className="bg-[#EEF2FF] border border-blue-105 p-3 rounded-2xl">
-                <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider">주요 카테고리</span>
-                <p className="text-xl font-black text-slate-850 mt-1">{totalFnb} F&B 브랜드</p>
-                <div className="h-1 w-8 bg-blue-400 rounded-full mt-2" />
+              <div className="bg-[#03C75A]/8 border border-[#03C75A]/15 p-4.5 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] relative overflow-hidden">
+                <span className="text-[10px] uppercase font-black text-[#03C75A] tracking-wider">주요 카테고리</span>
+                <p className="text-xl font-black text-slate-900 mt-1.5">{totalFnb} F&B 브랜드</p>
+                <div className="h-1 w-8 bg-gradient-to-r from-[#03C75A] to-[#1eca6b] rounded-full mt-2" />
               </div>
-              <div className="bg-[#FFF1F2] border border-pink-105 p-3 rounded-2xl">
-                <span className="text-[10px] uppercase font-extrabold text-pink-600 tracking-wider">논푸드/리테일</span>
-                <p className="text-xl font-black text-slate-850 mt-1">{totalRetail} 아웃렛 대상</p>
-                <div className="h-1 w-8 bg-pink-400 rounded-full mt-2" />
+              <div className="bg-[#1eca6b]/8 border border-[#1eca6b]/15 p-4.5 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] relative overflow-hidden">
+                <span className="text-[10px] uppercase font-black text-[#1eca6b] tracking-wider">논푸드/리테일</span>
+                <p className="text-xl font-black text-slate-900 mt-1.5">{totalRetail} 아웃렛 대상</p>
+                <div className="h-1 w-8 bg-gradient-to-r from-[#1eca6b] to-[#03C75A] rounded-full mt-2" />
               </div>
             </div>
           )}
 
           {/* Interactive Brand Directory Select Area */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-3">
-            <div className="flex justify-between items-center pb-2.5 border-b border-indigo-50">
+          <div className="glass-card p-5 rounded-3xl space-y-3">
+            <div className="flex justify-between items-center pb-3.5 border-b border-[#03C75A]/10">
               <div>
-                <h3 className="font-bold text-xs text-slate-500 uppercase tracking-widest">실시간 영업 타겟</h3>
-                <span className="text-[10px] text-slate-400 font-medium">총 {brands.length}개 계약 및 기회 발견</span>
+                <h3 className="font-bold text-xs text-slate-400 uppercase tracking-widest">실시간 영업 타겟</h3>
+                <span className="text-[10px] text-slate-400 font-bold">총 {brands.length}개 계약 및 기회 발견</span>
               </div>
               <button
                 onClick={() => setIsAddingBrand(!isAddingBrand)}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all select-none cursor-pointer border border-indigo-100 shadow-3xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black bg-[#03C75A]/12 hover:bg-[#03C75A]/25 text-[#03C75A] border border-[#03C75A]/25 transition-all select-none cursor-pointer shadow-sm shadow-[#03C75A]/5"
               >
-                <Plus className="w-3 h-3 text-indigo-600" />
+                <Plus className="w-3.5 h-3.5 text-[#03C75A]" />
                 <span>아웃바운드 발굴</span>
               </button>
             </div>
 
             {isAddingBrand && (
-              <form onSubmit={handleBrandSubmit} className="bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200/60 space-y-3 animate-fadeIn">
-                <div className="border-b border-slate-200 pb-1.5 flex justify-between items-center">
-                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1">
+              <form onSubmit={handleBrandSubmit} className="bg-white/50 p-4 rounded-2xl border border-[#03C75A]/10 space-y-3.5 animate-fadeIn">
+                <div className="border-b border-[#03C75A]/10 pb-2.5 flex justify-between items-center">
+                  <span className="text-[10px] font-black text-[#03C75A] uppercase tracking-wider flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-indigo-500 animate-pulse" />
                     <span>신규 아웃바운드 개척 등록</span>
                   </span>
@@ -2093,25 +2029,25 @@ export default function App() {
                 <div className="space-y-2 text-xs text-slate-700">
                   {/* Brand Name */}
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-500">브랜드명 (필수)</label>
+                    <label className="block text-[10px] font-bold text-slate-400">브랜드명 (필수)</label>
                     <input
                       type="text"
                       required
                       placeholder="예: 런던 베이글 뮤지엄"
                       value={newBrandForm.name}
                       onChange={(e) => setNewBrandForm({ ...newBrandForm, name: e.target.value })}
-                      className="w-full text-xs p-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      className="w-full text-xs p-2.5 glass-input rounded-xl focus:outline-none"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     {/* Category */}
                     <div className="space-y-0.5">
-                      <label className="block text-[9px] font-bold text-slate-500">카테고리</label>
+                      <label className="block text-[9px] font-bold text-slate-400">카테고리</label>
                       <select
                         value={newBrandForm.category}
                         onChange={(e) => setNewBrandForm({ ...newBrandForm, category: e.target.value as any })}
-                        className="w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 glass-input rounded-xl focus:outline-none"
                       >
                         <option value="F&B Brand">F&B 외식</option>
                         <option value="Non-food Brand">제품/리테일</option>
@@ -2122,11 +2058,11 @@ export default function App() {
 
                     {/* Pipeline status */}
                     <div className="space-y-0.5">
-                      <label className="block text-[9px] font-bold text-slate-500">영업 초기 단계</label>
+                      <label className="block text-[9px] font-bold text-slate-400">영업 초기 단계</label>
                       <select
                         value={newBrandForm.pipelineStatus}
                         onChange={(e) => setNewBrandForm({ ...newBrandForm, pipelineStatus: e.target.value as any })}
-                        className="w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 glass-input rounded-xl focus:outline-none"
                       >
                         <option value="Cold Call">콜드콜 (Cold Call)</option>
                         <option value="First Meeting">첫 대면 미팅 약속</option>
@@ -2139,32 +2075,32 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-2">
                     {/* Target stores count */}
                     <div className="space-y-0.5">
-                      <label className="block text-[9px] font-bold text-slate-500">타겟 매장 수</label>
+                      <label className="block text-[9px] font-bold text-slate-400">타겟 매장 수</label>
                       <input
                         type="number"
                         min="1"
                         value={newBrandForm.targetStoresCount}
                         onChange={(e) => setNewBrandForm({ ...newBrandForm, targetStoresCount: Number(e.target.value) })}
-                        className="w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 glass-input rounded-xl focus:outline-none"
                       />
                     </div>
 
                     {/* Revenue Est */}
                     <div className="space-y-0.5">
-                      <label className="block text-[9px] font-bold text-slate-500">월 매출 규모</label>
+                      <label className="block text-[9px] font-bold text-slate-400">월 매출 규모</label>
                       <input
                         type="text"
                         placeholder="예: 월 6,000만원 예상"
                         value={newBrandForm.monthlyRevenueEst}
                         onChange={(e) => setNewBrandForm({ ...newBrandForm, monthlyRevenueEst: e.target.value })}
-                        className="w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 glass-input rounded-xl focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Headquarters info */}
                   <div className="space-y-0.5">
-                    <label className="block text-[9px] font-bold text-slate-500">본사 주소 / 본점 주소</label>
+                    <label className="block text-[9px] font-bold text-slate-400">본사 주소 / 본점 주소</label>
                     <input
                       type="text"
                       placeholder="예: 서울시 강남구 압구정로"
@@ -2176,12 +2112,12 @@ export default function App() {
 
                   {/* Description */}
                   <div className="space-y-0.5">
-                    <label className="block text-[9px] font-bold text-slate-500">요약 설명 및 전략</label>
+                    <label className="block text-[9px] font-bold text-slate-400">요약 설명 및 전략</label>
                     <textarea
                       placeholder="아웃바운드 영업 타겟 발굴 이유 기입"
                       value={newBrandForm.description}
                       onChange={(e) => setNewBrandForm({ ...newBrandForm, description: e.target.value })}
-                      className="w-full text-[10px] p-2 bg-white border border-slate-200 rounded-lg focus:outline-none h-12 resize-none leading-tight"
+                      className="w-full text-[10px] p-2.5 glass-input rounded-xl focus:outline-none h-14 resize-none leading-tight"
                     />
                   </div>
 
@@ -2194,14 +2130,14 @@ export default function App() {
                         placeholder="이름 (예: 김지훈 대리)"
                         value={newBrandForm.contactName}
                         onChange={(e) => setNewBrandForm({ ...newBrandForm, contactName: e.target.value })}
-                        className="w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 glass-input rounded-xl focus:outline-none"
                       />
                       <input
                         type="text"
                         placeholder="직책 (예: 브랜드 제휴 담당)"
                         value={newBrandForm.contactPosition}
                         onChange={(e) => setNewBrandForm({ ...newBrandForm, contactPosition: e.target.value })}
-                        className="w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 glass-input rounded-xl focus:outline-none"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-1.5">
@@ -2210,14 +2146,14 @@ export default function App() {
                         placeholder="연락처 (예: 010-9999-0000)"
                         value={newBrandForm.contactPhone}
                         onChange={(e) => setNewBrandForm({ ...newBrandForm, contactPhone: e.target.value })}
-                        className="w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 glass-input rounded-xl focus:outline-none"
                       />
                       <input
                         type="email"
                         placeholder="이메일 주소"
                         value={newBrandForm.contactEmail}
                         onChange={(e) => setNewBrandForm({ ...newBrandForm, contactEmail: e.target.value })}
-                        className="w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 glass-input rounded-xl focus:outline-none"
                       />
                     </div>
                   </div>
@@ -2227,7 +2163,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsAddingBrand(false)}
-                    className="px-2.5 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 rounded-lg font-bold cursor-pointer transition-all text-[11px]"
+                    className="px-2.5 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-400 rounded-lg font-bold cursor-pointer transition-all text-[11px]"
                   >
                     취소
                   </button>
@@ -2245,7 +2181,7 @@ export default function App() {
             <div className="space-y-2">
               {loading ? (
                 <div className="space-y-3 py-2">
-                  <div className="p-3.5 border border-slate-100 bg-white rounded-2xl space-y-3 animate-pulse">
+                  <div className="p-4 bg-white/70 border border-[#03C75A]/10 rounded-2xl space-y-3 animate-pulse">
                     <div className="flex gap-2.5 items-center">
                       <div className="w-8 h-8 rounded-xl bg-slate-100" />
                       <div className="space-y-2">
@@ -2256,7 +2192,7 @@ export default function App() {
                     <div className="h-0.5 bg-slate-100 rounded" />
                     <div className="h-2.5 w-full bg-slate-100 rounded-md" />
                   </div>
-                  <div className="p-3.5 border border-slate-100 bg-white rounded-2xl space-y-3 animate-pulse">
+                  <div className="p-4 bg-white/70 border border-[#03C75A]/10 rounded-2xl space-y-3 animate-pulse">
                     <div className="flex gap-2.5 items-center">
                       <div className="w-8 h-8 rounded-xl bg-slate-100" />
                       <div className="space-y-2">
@@ -2291,13 +2227,13 @@ export default function App() {
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-2">
                           <span className={`w-7 h-7 flex items-center justify-center rounded-xl text-xs font-black shadow-xs ${
-                            b.category === 'F&B Brand' ? 'bg-[#DBEAFE] text-[#1E40AF]' : 'bg-[#FCE7F3] text-[#9D174D]'
+                            b.category === 'F&B Brand' ? 'bg-[#03C75A]/12 text-[#03C75A] border border-[#03C75A]/15' : 'bg-[#1eca6b]/12 text-[#1eca6b] border border-[#1eca6b]/15'
                           }`}>
                             {b.logo}
                           </span>
                           <div>
-                            <h4 className="text-xs sm:text-sm font-bold text-slate-900">{b.name}</h4>
-                            <span className="text-[10px] text-slate-450 font-semibold">{b.category === 'F&B Brand' ? 'F&B 외식' : '제품 리테일'}</span>
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900">{b.name}</h4>
+                            <span className="text-[10px] text-slate-400 font-bold">{b.category === 'F&B Brand' ? 'F&B 외식' : '제품 리테일'}</span>
                           </div>
                         </div>
                         {isCompleted && (
@@ -2312,12 +2248,12 @@ export default function App() {
                           ? new Date(Math.max(...brandMeetings.map(m => new Date(m.dateTime).getTime()))).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
                           : '활동 이력 없음';
                         return (
-                          <div className="mt-2.5 pt-2 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-500 font-bold">
-                            <span className="text-slate-400 font-semibold flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-slate-350 shrink-0" />
+                          <div className="mt-2.5 pt-2.5 border-t border-[#03C75A]/10 flex justify-between items-center text-[10px] text-slate-400 font-bold">
+                            <span className="text-slate-400 font-bold flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-slate-550 shrink-0" />
                               <span>최근 접촉: {lastContact}</span>
                             </span>
-                            <span className="font-semibold text-emerald-800 shrink-0 bg-[#dafbe4] px-1.5 py-0.5 rounded border border-[#a2f2bd]">
+                            <span className="font-bold text-[#03C75A] shrink-0 bg-[#03C75A]/10 px-2 py-0.5 rounded-lg border border-[#03C75A]/20">
                               본점 외 {b.targetStoresCount}개 매장
                             </span>
                           </div>
@@ -2467,12 +2403,12 @@ export default function App() {
                   </div>
                   
                   <h4 className="font-semibold text-slate-400 text-[10px] uppercase flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-300" />
-                    <span>본사 참고 주소: <span className="text-slate-500 font-medium select-all">{activeBrand.headquarters}</span></span>
+                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                    <span>본사 참고 주소: <span className="text-slate-400 font-medium select-all">{activeBrand.headquarters}</span></span>
                   </h4>
                   
                   <h4 className="font-bold text-slate-450 text-[10px] uppercase mt-3.5">브랜드 부가 설명</h4>
-                  <p className="text-slate-500 mt-1 bg-slate-50/50 p-2 rounded-xl text-[11px] line-clamp-3">{activeBrand.description}</p>
+                  <p className="text-slate-400 mt-1 bg-slate-50/50 p-2 rounded-xl text-[11px] line-clamp-3">{activeBrand.description}</p>
                 </div>
 
                 <div className="bg-slate-50/40 p-3.5 rounded-2xl space-y-2.5">
@@ -2490,17 +2426,17 @@ export default function App() {
                               ? 'bg-blue-50 border-blue-100 text-blue-700' 
                               : contact.role === 'VAN대리점'
                               ? 'bg-amber-50 border-amber-100 text-amber-800'
-                              : 'bg-slate-50 border-slate-200 text-slate-600'
+                              : 'bg-slate-50 border-slate-200 text-slate-500'
                           }`}>
                             {contact.role}
                           </span>
                         </div>
                         <p className="text-slate-400 mt-0.5 text-[10px] font-semibold">{contact.position}</p>
-                        <div className="flex gap-2.5 mt-2.5 text-[10px] text-slate-600">
-                          <span className="flex items-center gap-0.5 select-all text-slate-500 hover:text-slate-800">
+                        <div className="flex gap-2.5 mt-2.5 text-[10px] text-slate-500">
+                          <span className="flex items-center gap-0.5 select-all text-slate-400 hover:text-slate-800">
                             <Phone className="w-3 h-3 text-slate-400" /> {contact.phone}
                           </span>
-                          <span className="flex items-center gap-0.5 select-all text-slate-500 hover:text-slate-800">
+                          <span className="flex items-center gap-0.5 select-all text-slate-400 hover:text-slate-800">
                             <Mail className="w-3 h-3 text-slate-400" /> {contact.email}
                           </span>
                         </div>
@@ -2554,7 +2490,7 @@ export default function App() {
                             ? 'bg-amber-500 text-white border-amber-600 shadow-sm' 
                             : isCompleted
                             ? 'bg-amber-100/80 border-amber-200/60 text-amber-900 hover:bg-amber-150/70'
-                            : 'bg-white border-amber-250/20 text-slate-500 hover:bg-amber-50/30'
+                            : 'bg-white border-amber-250/20 text-slate-400 hover:bg-amber-50/30'
                         }`}
                       >
                         <div className="flex justify-between items-center w-full">
@@ -2665,7 +2601,7 @@ export default function App() {
                     </div>
 
                     {emailDraft && (
-                      <div className="bg-slate-900 text-slate-100 p-4 rounded-xl border border-indigo-500/35 space-y-3">
+                      <div className="bg-white/70 text-slate-900 p-4 rounded-xl border border-indigo-500/35 space-y-3">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                           <span className="text-[10px] font-bold text-indigo-400">자동 추천 초안</span>
                           <div className="flex gap-1.5">
@@ -2675,7 +2611,7 @@ export default function App() {
                                 setCopiedEmail(true);
                                 setTimeout(() => setCopiedEmail(false), 2000);
                               }}
-                              className="text-[9px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded transition-all cursor-pointer"
+                              className="text-[9px] font-bold bg-slate-800 hover:bg-white/50 text-slate-800 px-2.5 py-1 rounded transition-all cursor-pointer"
                             >
                               {copiedEmail ? "✓ 복사 완료" : "📋 본문 복사"}
                             </button>
@@ -2689,7 +2625,7 @@ export default function App() {
                         </div>
                         <div className="space-y-1 text-left">
                           <p className="text-[10px] font-bold text-slate-350">제목: {emailDraft.subject}</p>
-                          <p className="text-[10px] text-slate-300 font-sans whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
+                          <p className="text-[10px] text-slate-500 font-sans whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
                             {emailDraft.body}
                           </p>
                         </div>
@@ -2711,7 +2647,7 @@ export default function App() {
                   <h3 className="font-bold text-slate-850 text-xs sm:text-sm">타임라인 미팅 히스토리</h3>
                   <p className="text-[10px] text-slate-400 font-semibold">{activeBrand.name} 전속 이력 모음</p>
                 </div>
-                <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">
                   총 {activeMeetings.length}개 이력
                 </span>
               </div>
@@ -2758,7 +2694,7 @@ export default function App() {
                                   <span>ONLINE MEET</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1.5 rounded-xl">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold bg-slate-100 text-slate-500 border border-slate-200 px-2 py-1.5 rounded-xl">
                                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
                                   <span>FIELD VISIT</span>
                                 </span>
@@ -2795,7 +2731,7 @@ export default function App() {
                             )}
 
                             {meet.location && meet.type === 'Offline' && (
-                              <p className="text-slate-500 flex items-center gap-1 text-[11px] font-medium bg-slate-50/60 p-2 rounded-xl">
+                              <p className="text-slate-400 flex items-center gap-1 text-[11px] font-medium bg-slate-50/60 p-2 rounded-xl">
                                 <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                 <span>장소: {meet.location}</span>
                               </p>
@@ -2805,7 +2741,7 @@ export default function App() {
                             {meet.notes && (
                               <div className="bg-slate-50/50 p-2.5 rounded-xl">
                                 <span className="text-[10px] text-slate-400 font-extrabold uppercase">미팅 쟁점 요약 (Raw Note)</span>
-                                <p className="text-slate-600 font-medium text-[11px] leading-relaxed mt-1">{meet.notes}</p>
+                                <p className="text-slate-500 font-medium text-[11px] leading-relaxed mt-1">{meet.notes}</p>
                               </div>
                             )}
 
@@ -2876,7 +2812,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsDrawerOpen(false)}
-              className="fixed inset-0 bg-slate-950/20 backdrop-blur-[1px] z-40 cursor-pointer animate-fadeIn"
+              className="fixed inset-0 bg-white/40 backdrop-blur-[1px] z-40 cursor-pointer animate-fadeIn"
             />
             
             {/* Slide-in Sheet Drawer Edge */}

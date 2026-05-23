@@ -73,7 +73,7 @@ export default function BrandHistoryTimeline({
   };
 
   return (
-    <div className="glass-card rounded-[32px] border border-white/50 p-5 sm:p-6 shadow-sm space-y-5 animate-fadeIn">
+    <div className="glass-card rounded-[32px] border border-[#03C75A]/100 p-5 sm:p-6 shadow-sm space-y-5 animate-fadeIn">
       {/* Header section with Naver Green identity */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
@@ -84,7 +84,7 @@ export default function BrandHistoryTimeline({
             <h3 className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight flex items-center gap-1.5">
               실시간 영업 히스토리 타임라인
             </h3>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">단말 연동 이력부터 현장 대외 파이프라인까지 한눈에 추적</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">단말 연동 이력부터 현장 대외 파이프라인까지 한눈에 추적</p>
           </div>
         </div>
 
@@ -95,7 +95,7 @@ export default function BrandHistoryTimeline({
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               filterMode === 'current'
                 ? 'bg-white text-[#01893d] shadow-2xs font-extrabold'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             선택 브랜드 ({selectedBrand?.name || '미지정'})
@@ -105,7 +105,7 @@ export default function BrandHistoryTimeline({
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               filterMode === 'all'
                 ? 'bg-white text-[#01893d] shadow-2xs font-extrabold'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             전체 활동 스트림
@@ -202,7 +202,7 @@ export default function BrandHistoryTimeline({
 
                     {/* Brief snippet */}
                     {!isExpanded && evt.notes && (
-                      <p className="text-[11px] text-slate-500 font-medium line-clamp-1 truncate bg-slate-50/50 p-1.5 rounded-lg border border-slate-100">
+                      <p className="text-[11px] text-slate-400 font-medium line-clamp-1 truncate bg-slate-50/50 p-1.5 rounded-lg border border-slate-100">
                         {evt.notes}
                       </p>
                     )}
@@ -226,7 +226,7 @@ export default function BrandHistoryTimeline({
                             )}
 
                             {/* Meeting Meta Details */}
-                            <div className="grid grid-cols-2 gap-2 text-[10px] border-t border-slate-100 pt-2 text-slate-500">
+                            <div className="grid grid-cols-2 gap-2 text-[10px] border-t border-slate-100 pt-2 text-slate-400">
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                 {evt.type === 'Online' ? '비대면 (화상)' : '대외 미팅'}
@@ -278,7 +278,7 @@ export default function BrandHistoryTimeline({
 
       {/* Footer statistics bar */}
       <div className="bg-slate-50 border border-slate-200/50 p-3 rounded-2xl flex items-center justify-between text-[11px] font-bold">
-        <span className="text-slate-500 flex items-center gap-1">
+        <span className="text-slate-400 flex items-center gap-1">
           <Bot className="w-3.5 h-3.5 text-[#03C75A]" />
           AI 기반 자동 이력 동기화
         </span>

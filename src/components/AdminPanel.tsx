@@ -798,7 +798,7 @@ export default function AdminPanel({
   };
 
   return (
-    <div className="glass-card rounded-[32px] border border-white/50 p-6 shadow-sm space-y-6 animate-fadeIn">
+    <div className="glass-card rounded-[32px] border border-[#03C75A]/100 p-6 shadow-sm space-y-6 animate-fadeIn">
       {/* Admin Panel Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60">
         <div className="flex items-center gap-3">
@@ -823,7 +823,7 @@ export default function AdminPanel({
             className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
               activeTab === 'migration'
                 ? 'bg-white text-[#01893d] shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             <Database className="w-3.5 h-3.5" />
@@ -835,7 +835,7 @@ export default function AdminPanel({
             className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
               activeTab === 'cadence'
                 ? 'bg-white text-[#01893d] shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             <HeartHandshake className="w-3.5 h-3.5" />
@@ -847,7 +847,7 @@ export default function AdminPanel({
             className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
               activeTab === 'users'
                 ? 'bg-white text-[#01893d] shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -859,7 +859,7 @@ export default function AdminPanel({
             className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
               activeTab === 'diagnostics'
                 ? 'bg-white text-[#01893d] shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-800'
             }`}
           >
             <Cpu className="w-3.5 h-3.5" />
@@ -896,7 +896,7 @@ export default function AdminPanel({
               <h4 className="text-xs font-black text-slate-800">
                 표준 CSV 파일을 사용하여 전사 가맹 리드, 담당자 연락처, 히스토리 데이터를 번거롭지 않게 적재할 수 있습니다.
               </h4>
-              <p className="text-[10px] text-slate-500 leading-normal font-sans">
+              <p className="text-[10px] text-slate-400 leading-normal font-sans">
                 각 영역별 템플릿을 다운로드하여 데이터를 쉼표(,) 구분 구문 형식에 맞게 배치한 뒤 업로드 하시면 됩니다.
               </p>
             </div>
@@ -938,7 +938,7 @@ export default function AdminPanel({
                 </h4>
               </div>
               
-              <p className="text-[11px] text-slate-500 leading-normal">
+              <p className="text-[11px] text-slate-400 leading-normal">
                 현재 데이터 서버에 암호화 보관 중인 모든 가맹 바이어 정보와 일선 영업 미팅 로그를 범용 엑셀(Excel)과 호환되는 쉼표 구분 파일(CSV)로 각각 세분화하여 내보냅니다.
               </p>
 
@@ -981,7 +981,7 @@ export default function AdminPanel({
                 </h4>
               </div>
               
-              <p className="text-[11px] text-slate-500 leading-normal">
+              <p className="text-[11px] text-slate-400 leading-normal">
                 정리된 영업 파일 대상 형식을 우선 선택하신 다음, 해당 문서를 아래 업로드 영역에 연동해 주시면 CSV 데이터를 식별해 Firestore 상에 자동 매핑합니다.
               </p>
 
@@ -993,7 +993,7 @@ export default function AdminPanel({
                     className={`text-[10px] font-bold py-1.5 rounded-lg cursor-pointer transition-all ${
                       csvType === type
                         ? 'bg-[#03C75A] text-white shadow-2xs font-extrabold'
-                        : 'text-slate-600 hover:text-slate-950'
+                        : 'text-slate-600 hover:text-white'
                     }`}
                   >
                     {type === 'brands' ? '브랜드 리스트' : type === 'contacts' ? '바이어' : '활동 히스토리'}
@@ -1077,7 +1077,7 @@ export default function AdminPanel({
             <h4 className="text-xs font-black text-slate-800 leading-snug">
               CRM 영업 사원의 가장 중요한 원칙은 방치된 파트너십의 상기(Follow-up)입니다.
             </h4>
-            <p className="text-[10.5px] text-slate-500 leading-normal font-medium">
+            <p className="text-[10.5px] text-slate-400 leading-normal font-medium">
               최근 미팅 소통 이력이 없는 방치 가맹사 리드 데이터를 감지하여, 아웃바운드 연락에 직접 탑재할 수 있는 자동 제안 이메일 브랜딩 텍스트를 구성하고 콜 프리뷰 스크립트를 조공합니다.
             </p>
           </div>
@@ -1210,7 +1210,7 @@ export default function AdminPanel({
                 <h4 className="text-xs font-black text-slate-800 mt-1 font-sans">
                   현재 마스터 계정의 역할을 즉석 변경하여 권한 분기 테스트를 수행해 보세요.
                 </h4>
-                <p className="text-[10px] text-slate-500 leading-normal mt-0.5">
+                <p className="text-[10px] text-slate-400 leading-normal mt-0.5">
                   Firestore 연계 승인 방식으로 실제 대리점/영업소 구성원 명단(CRUD) 및 이미지를 다중 세션 실시간 동기화합니다.
                 </p>
               </div>
@@ -1303,7 +1303,7 @@ export default function AdminPanel({
                         type="text"
                         disabled
                         value={editingUserEmail}
-                        className="w-full text-xs p-2 bg-slate-100 border border-slate-200 text-slate-500 rounded-lg focus:outline-none"
+                        className="w-full text-xs p-2 bg-slate-100 border border-slate-200 text-slate-400 rounded-lg focus:outline-none"
                       />
                     </div>
 
@@ -1426,12 +1426,12 @@ export default function AdminPanel({
                       <span className="text-[10px] text-slate-400 font-bold block">프로필 이미지 수정</span>
                       
                       {activeWebcamMode === 'edit' ? (
-                        <div className="border border-slate-200 rounded-xl p-2 bg-slate-950 relative overflow-hidden flex flex-col items-center">
+                        <div className="border border-slate-200 rounded-xl p-2 bg-white/60 relative overflow-hidden flex flex-col items-center">
                           <video 
                             ref={videoRef} 
                             autoPlay 
                             playsInline 
-                            className="w-full max-h-48 rounded-lg object-cover bg-slate-900" 
+                            className="w-full max-h-48 rounded-lg object-cover bg-white/70" 
                           />
                           {webcamError && (
                             <div className="text-[10px] text-rose-500 p-1.5 mt-1 font-bold bg-rose-50 rounded-lg text-center">
@@ -1499,7 +1499,7 @@ export default function AdminPanel({
                                   className="w-12 h-12 rounded-full object-cover border border-[#03C75A]/30 shadow-2xs" 
                                   referrerPolicy="no-referrer"
                                 />
-                                <div className="text-left text-[10px] text-slate-500 font-sans">
+                                <div className="text-left text-[10px] text-slate-400 font-sans">
                                   <span className="text-[#03C75A] font-extrabold block">✓ 이미지 로드 완료</span>
                                   <span className="text-[9px] text-slate-400">변경하려면 드래그/클릭</span>
                                 </div>
@@ -1676,12 +1676,12 @@ export default function AdminPanel({
                       <span className="text-[10px] text-slate-400 font-bold block">프로필 이미지 등록</span>
                       
                       {activeWebcamMode === 'new' ? (
-                        <div className="border border-slate-200 rounded-xl p-2 bg-slate-950 relative overflow-hidden flex flex-col items-center">
+                        <div className="border border-slate-200 rounded-xl p-2 bg-white/60 relative overflow-hidden flex flex-col items-center">
                           <video 
                             ref={videoRef} 
                             autoPlay 
                             playsInline 
-                            className="w-full max-h-48 rounded-lg object-cover bg-slate-900" 
+                            className="w-full max-h-48 rounded-lg object-cover bg-white/70" 
                           />
                           {webcamError && (
                             <div className="text-[10px] text-rose-500 p-1.5 mt-1 font-bold bg-rose-50 rounded-lg text-center">
@@ -1749,7 +1749,7 @@ export default function AdminPanel({
                                   className="w-12 h-12 rounded-full object-cover border border-[#03C75A]/30 shadow-2xs" 
                                   referrerPolicy="no-referrer"
                                 />
-                                <div className="text-left text-[10px] text-slate-500 font-sans">
+                                <div className="text-left text-[10px] text-slate-400 font-sans">
                                   <span className="text-[#03C75A] font-extrabold block">✓ 이미지 로드 완료</span>
                                   <span className="text-[9px] text-slate-400">변경하려면 다시 드래그/클릭</span>
                                 </div>
@@ -1862,7 +1862,7 @@ export default function AdminPanel({
                             className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-black select-none border transition-all ${
                               user.canEditPipeline !== false 
                                 ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
-                                : 'bg-slate-100/60 text-slate-300 border-slate-100 line-through opacity-30 font-normal'
+                                : 'bg-slate-100/60 text-slate-600 border-slate-100 line-through opacity-30 font-normal'
                             }`}
                             title={user.canEditPipeline !== false ? 'K: 세일즈 칸반 가공 (활성화)' : 'K: 세일즈 칸반 가공 (차단됨)'}
                           >
@@ -1873,7 +1873,7 @@ export default function AdminPanel({
                             className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-black select-none border transition-all ${
                               user.canUseAI !== false 
                                 ? 'bg-purple-50 text-purple-700 border-purple-200' 
-                                : 'bg-slate-100/60 text-slate-300 border-slate-100 line-through opacity-30 font-normal'
+                                : 'bg-slate-100/60 text-slate-600 border-slate-100 line-through opacity-30 font-normal'
                             }`}
                             title={user.canUseAI !== false ? 'AI: 인공지능 영업 비서 (활성화)' : 'AI: 인공지능 영업 비서 (차단됨)'}
                           >
@@ -1882,7 +1882,7 @@ export default function AdminPanel({
                           {/* Audit */}
                           <span 
                             className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-black select-none border transition-all ${
-                              user.canViewAudit ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100/60 text-slate-300 border-slate-100 line-through opacity-30 font-normal'
+                              user.canViewAudit ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100/60 text-slate-600 border-slate-100 line-through opacity-30 font-normal'
                             }`}
                             title={user.canViewAudit ? 'S: 사내 보안감사 로그 (활성화)' : 'S: 사내 보안감사 로그 (차단됨)'}
                           >
@@ -1891,7 +1891,7 @@ export default function AdminPanel({
                           {/* Admin */}
                           <span 
                             className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-black select-none border transition-all ${
-                              user.canManageUsers ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100/60 text-slate-300 border-slate-100 line-through opacity-30 font-normal'
+                              user.canManageUsers ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100/60 text-slate-600 border-slate-100 line-through opacity-30 font-normal'
                             }`}
                             title={user.canManageUsers ? 'A: 인사권 및 조직 세부 권한 제어 (활성화)' : 'A: 인사권 및 조직 세부 권한 제어 (차단됨)'}
                           >
@@ -1902,7 +1902,7 @@ export default function AdminPanel({
                             className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-black select-none border transition-all ${
                               user.canExportCSV !== false 
                                 ? 'bg-teal-50 text-teal-700 border-teal-200' 
-                                : 'bg-slate-100/60 text-slate-300 border-slate-100 line-through opacity-30 font-normal'
+                                : 'bg-slate-100/60 text-slate-600 border-slate-100 line-through opacity-30 font-normal'
                             }`}
                             title={user.canExportCSV !== false ? 'E: 원천 데이터 CSV 백업 (활성화)' : 'E: 원천 데이터 CSV 백업 (차단됨)'}
                           >
@@ -1934,7 +1934,7 @@ export default function AdminPanel({
                         <div className="flex items-center gap-1 pl-1 border-l border-slate-100">
                           <button
                             onClick={() => handleStartEdit(user)}
-                            className="p-1 text-slate-500 hover:text-slate-800 cursor-pointer text-[10px] font-bold"
+                            className="p-1 text-slate-400 hover:text-slate-800 cursor-pointer text-[10px] font-bold"
                             title="프로필 및 소속 수정"
                           >
                             수정

@@ -327,7 +327,7 @@ export default function AnalyticsDashboard({ brands, meetings }: AnalyticsDashbo
                 </span>
               </h4>
             </div>
-            <p className="text-[11px] md:text-xs text-slate-500 font-semibold md:pl-8">
+            <p className="text-[11px] md:text-xs text-slate-400 font-semibold md:pl-8">
               실시간 계약 완료(Deal Completed) 실적기반 최소자승법(Least Squares Method) 선형 회귀 모형으로 다음 3개월 세일즈를 정밀 시뮬레이션합니다.
             </p>
           </div>
@@ -339,7 +339,7 @@ export default function AnalyticsDashboard({ brands, meetings }: AnalyticsDashbo
               className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                 projectionMode === 'cumulative'
                   ? 'bg-white text-indigo-700 shadow-sm font-black'
-                  : 'text-slate-500 hover:text-slate-800'
+                  : 'text-slate-400 hover:text-slate-800'
               }`}
             >
               누적 계약 완료 기준
@@ -349,7 +349,7 @@ export default function AnalyticsDashboard({ brands, meetings }: AnalyticsDashbo
               className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                 projectionMode === 'monthly'
                   ? 'bg-white text-indigo-700 shadow-sm font-black'
-                  : 'text-slate-500 hover:text-slate-800'
+                  : 'text-slate-400 hover:text-slate-800'
               }`}
             >
               월별 신규 건수 기준
@@ -467,7 +467,7 @@ export default function AnalyticsDashboard({ brands, meetings }: AnalyticsDashbo
 
             {/* Note */}
             <div className="text-[10px] text-slate-400 font-semibold leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100/80">
-              💡 <span className="text-slate-500">영업 실적이 새로 동기화되면 선형 회귀모델의 기울기가 실시간 보정되어 추세선도 자동 반영됩니다.</span>
+              💡 <span className="text-slate-400">영업 실적이 새로 동기화되면 선형 회귀모델의 기울기가 실시간 보정되어 추세선도 자동 반영됩니다.</span>
             </div>
           </div>
         </div>
@@ -680,7 +680,7 @@ export default function AnalyticsDashboard({ brands, meetings }: AnalyticsDashbo
                 </span>
                 <span className="font-bold text-xs text-slate-800">첫 미팅 지연 상태 감지</span>
               </div>
-              <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">
+              <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
                 최근 <strong>미니멀 라이프(MUJI)</strong> 코리아가 콜드콜 단계에서 7일간 정체되어 있습니다. AI 미팅 노트 상의 "6개월 파일럿 가맹 시뮬레이션" 이탈 방지 피칭을 우선 발송하여 첫 미팅 성사를 유도 권장합니다.
               </p>
             </div>

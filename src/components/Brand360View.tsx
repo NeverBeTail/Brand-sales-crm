@@ -694,14 +694,14 @@ B2B 비즈니스 솔루션팀 드림`;
               }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10.5px] font-black transition-all cursor-pointer select-none ${
                 isActive 
-                  ? 'bg-slate-900 text-white shadow-2xs' 
-                  : 'bg-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                  ? 'bg-white/70 text-white shadow-2xs' 
+                  : 'bg-transparent text-slate-400 hover:text-slate-800 hover:bg-slate-50'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{t.label}</span>
               {'count' in t && t.count !== undefined && (
-                <span className={`text-[8.5px] px-1 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`text-[8.5px] px-1 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'}`}>
                   {t.count}
                 </span>
               )}
@@ -723,7 +723,7 @@ B2B 비즈니스 솔루션팀 드림`;
             initial={{ opacity: 0, y: -15, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className="absolute top-18 inset-x-6 mx-auto max-w-xs bg-slate-900 text-white p-3 rounded-xl text-[10px] font-bold text-center shadow-lg z-50 flex items-center justify-center gap-2 border border-slate-800"
+            className="absolute top-18 inset-x-6 mx-auto max-w-xs bg-white/70 text-white p-3 rounded-xl text-[10px] font-bold text-center shadow-lg z-50 flex items-center justify-center gap-2 border border-[#03C75A]/10"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>{toastMessage}</span>
@@ -778,8 +778,8 @@ B2B 비즈니스 솔루션팀 드림`;
 
               {sortedTimeline.length === 0 ? (
                 <div className="bg-white rounded-3xl p-10 text-center text-slate-400 py-12 flex flex-col items-center justify-center">
-                  <MessageSquare className="w-7 h-7 text-slate-300 mb-1.5" />
-                  <p className="text-xs font-black text-slate-500">통합 피드에 기록된 미팅 이력이나 협업 대화가 없습니다.</p>
+                  <MessageSquare className="w-7 h-7 text-slate-600 mb-1.5" />
+                  <p className="text-xs font-black text-slate-400">통합 피드에 기록된 미팅 이력이나 협업 대화가 없습니다.</p>
                   <p className="text-[10px] text-slate-400 mt-1">하단 고정창에 첫 공동 실시간 영엽 회의록 메모를 전파해 보세요!</p>
                 </div>
               ) : (
@@ -851,7 +851,7 @@ B2B 비즈니스 솔루션팀 드림`;
                               className={`flex items-center gap-1 px-2 py-1 rounded-lg border font-black cursor-pointer transition-all select-none ${
                                 meet.reminderSet 
                                   ? "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]" 
-                                  : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                  : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
                               }`}
                             >
                               <Bell className={`w-3 h-3 ${meet.reminderSet ? 'text-[#D97706] animate-swing' : ''}`} />
@@ -946,7 +946,7 @@ B2B 비즈니스 솔루션팀 드림`;
                       className="text-[14px] font-black text-indigo-700 bg-transparent border-b border-transparent focus:border-indigo-400 focus:outline-none w-18 p-0"
                       title="클릭 시 즉시 계약 수수료 지수 변경 가능"
                     />
-                    <Edit3 className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Edit3 className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
 
@@ -1206,7 +1206,7 @@ B2B 비즈니스 솔루션팀 드림`;
                                       <div>
                                         <h5 className="font-extrabold text-[11.5px] text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors flex items-center gap-1">
                                           <span>{c.name}</span>
-                                          <Edit3 className="w-2.5 h-2.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                          <Edit3 className="w-2.5 h-2.5 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                         </h5>
                                         <p className="text-[9.5px] text-slate-400 font-bold mt-0.5">{c.position || "실무 소통 관리"}</p>
                                       </div>
@@ -1319,7 +1319,7 @@ B2B 비즈니스 솔루션팀 드림`;
                                 onClick={() => handleUpdateSolutionPipeline(sol.id, st.id as PipelineStatus)}
                                 className={`text-[9.5px] p-1.5 rounded-lg font-extrabold text-center cursor-pointer select-none transition-all ${
                                   currentStatus === st.id 
-                                    ? "bg-slate-900 text-white" 
+                                    ? "bg-white/70 text-white" 
                                     : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
                                 }`}
                               >
@@ -1330,7 +1330,7 @@ B2B 비즈니스 솔루션팀 드림`;
                           <button 
                             type="button" 
                             onClick={() => setEditingSolutionId(null)}
-                            className="text-[8.5px] text-slate-500 hover:underline font-black block text-right pt-0.5 cursor-pointer"
+                            className="text-[8.5px] text-slate-400 hover:underline font-black block text-right pt-0.5 cursor-pointer"
                           >
                             수정 취소
                           </button>
@@ -1454,19 +1454,19 @@ B2B 비즈니스 솔루션팀 드림`;
             </div>
 
             {/* 3C: AI pitch mail maker (기지바이어 맞춤 메일 초안 빌더) */}
-            <div className="bg-slate-900 text-slate-100 rounded-3xl p-5 space-y-4">
-              <div className="flex items-center gap-1.5 border-b border-white/5 pb-2">
+            <div className="bg-white/70 text-slate-900 rounded-3xl p-5 space-y-4">
+              <div className="flex items-center gap-1.5 border-b border-[#03C75A]/10 pb-2">
                 <Sparkles className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
                 <h5 className="text-[12.5px] font-extrabold tracking-tight">AI 맞춤형 제안 이메일 초안 빌더</h5>
               </div>
 
-              <div className="grid grid-cols-1 gap-3.5 text-[10px] text-slate-200">
+              <div className="grid grid-cols-1 gap-3.5 text-[10px] text-slate-800">
                 <div className="space-y-1">
                   <span className="text-[8px] font-black uppercase text-slate-400 block tracking-widest">목표 판매 솔루션 제품</span>
                   <select
                     value={pitchSolutionId}
                     onChange={(e) => setPitchSolutionId(e.target.value)}
-                    className="w-full text-[10px] p-2 rounded-xl bg-slate-800 text-white border-0 focus:ring-1 focus:ring-indigo-400 focus:outline-none font-bold select-none cursor-pointer"
+                    className="w-full text-[10px] p-2 rounded-xl bg-white/50 text-white border-0 focus:ring-1 focus:ring-indigo-400 focus:outline-none font-bold select-none cursor-pointer"
                   >
                     {solutions.map(sol => (
                       <option key={sol.id} value={sol.id}>{sol.name} ({sol.code})</option>
@@ -1479,7 +1479,7 @@ B2B 비즈니스 솔루션팀 드림`;
                   <select
                     value={pitchTone}
                     onChange={(e) => setPitchTone(e.target.value as any)}
-                    className="w-full text-[10px] p-2 rounded-xl bg-slate-800 text-white border-0 focus:ring-1 focus:ring-indigo-400 focus:outline-none font-bold select-none cursor-pointer"
+                    className="w-full text-[10px] p-2 rounded-xl bg-white/50 text-white border-0 focus:ring-1 focus:ring-indigo-400 focus:outline-none font-bold select-none cursor-pointer"
                   >
                     <option value="professional">🛡️ 파트너사 신뢰 지점장 케어 웰컴 톤</option>
                     <option value="revenue">📈 점포 당 마진 수수료 극대화 ROI 톤</option>
@@ -1517,7 +1517,7 @@ B2B 비즈니스 솔루션팀 드림`;
                         navigator.clipboard.writeText(pitchDraft);
                         triggerToast("제안서 메일 초안 카탈로그가 복사되었습니다! 📨");
                       }}
-                      className="text-[8.5px] font-black text-[#03C75A] bg-slate-800 hover:bg-slate-750 px-2 py-0.5 rounded cursor-pointer select-none"
+                      className="text-[8.5px] font-black text-[#03C75A] bg-white/50 hover:bg-slate-750 px-2 py-0.5 rounded cursor-pointer select-none"
                     >
                       문안 인쇄 복사
                     </button>
@@ -1525,7 +1525,7 @@ B2B 비즈니스 솔루션팀 드림`;
                 </div>
 
                 {isGeneratingPitch ? (
-                  <div className="bg-slate-850 p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-2 h-44 animate-pulse border border-white/5">
+                  <div className="bg-slate-850 p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-2 h-44 animate-pulse border border-[#03C75A]/10">
                     <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
                     <p className="text-[9px] font-bold text-slate-400">바이어 직함을 연계하여 전용 이메일을 설계 중입니다...</p>
                   </div>
@@ -1533,12 +1533,12 @@ B2B 비즈니스 솔루션팀 드림`;
                   <textarea
                     value={pitchDraft}
                     onChange={(e) => setPitchDraft(e.target.value)}
-                    className="w-full h-44 bg-slate-800 border-0 focus:ring-1 focus:ring-indigo-400 focus:outline-none rounded-xl p-3 text-[10px] leading-relaxed font-bold font-mono text-slate-200"
+                    className="w-full h-44 bg-white/50 border-0 focus:ring-1 focus:ring-indigo-400 focus:outline-none rounded-xl p-3 text-[10px] leading-relaxed font-bold font-mono text-slate-800"
                     placeholder="제안서 빌더 개시해 보십시오."
                   />
                 ) : (
-                  <div className="bg-slate-800/40 border border-dashed border-slate-700/50 p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-1.5 h-44">
-                    <BookOpen className="w-5 h-5 text-slate-500" />
+                  <div className="bg-white/50/40 border border-dashed border-[#03C75A]/15/50 p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-1.5 h-44">
+                    <BookOpen className="w-5 h-5 text-slate-400" />
                     <p className="text-[10px] font-extrabold text-[#F8FAFC]">메일 제안서 시안 대기 중</p>
                     <p className="text-[8px] text-slate-400">설정에 따라 1초 내에 커스텀 마크업 제안 메일을 구성합니다.</p>
                   </div>
@@ -1623,7 +1623,7 @@ B2B 비즈니스 솔루션팀 드림`;
             <button
               type="submit"
               disabled={!newCommentText.trim()}
-              className="p-3.5 bg-slate-900 hover:bg-slate-800 active:scale-95 disabled:opacity-50 text-white rounded-2xl transition-all shadow-md shadow-slate-950/5 cursor-pointer flex items-center justify-center shrink-0"
+              className="p-3.5 bg-white/70 hover:bg-white/50 active:scale-95 disabled:opacity-50 text-white rounded-2xl transition-all shadow-md shadow-slate-950/5 cursor-pointer flex items-center justify-center shrink-0"
             >
               <Send className="w-3.5 h-3.5" />
             </button>
