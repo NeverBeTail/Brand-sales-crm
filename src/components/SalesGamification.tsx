@@ -7,7 +7,7 @@ import {
 interface SalesGoal {
   id: string;
   userName: string;
-  userRole: 'Admin' | 'Manager' | 'Sales_Rep';
+  userRole: 'Admin' | 'Sales_Rep';
   targetType: string;
   metricName: string;
   targetValue: number;
@@ -17,7 +17,7 @@ interface SalesGoal {
 }
 
 interface SalesGamificationProps {
-  userRole: 'Admin' | 'Manager' | 'Sales_Rep';
+  userRole: 'Admin' | 'Sales_Rep';
   onGoalCompleted: () => void;
 }
 

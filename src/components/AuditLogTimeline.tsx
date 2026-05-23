@@ -9,7 +9,7 @@ interface AuditLog {
   id: string;
   userId: string;
   userName: string;
-  userRole: 'Admin' | 'Manager' | 'Sales_Rep';
+  userRole: 'Admin' | 'Sales_Rep';
   action: 'UPDATE_PIPELINE' | 'CREATE_MEETING' | 'UPDATE_MEETING' | 'SOFT_DELETE' | 'EXPORT_CSV';
   targetType: string;
   targetName: string;
@@ -37,7 +37,7 @@ interface SentryEvent {
 }
 
 interface AuditLogTimelineProps {
-  userRole: 'Admin' | 'Manager' | 'Sales_Rep';
+  userRole: 'Admin' | 'Sales_Rep';
   auditLogs: AuditLog[];
   onRefresh: () => void;
 }
@@ -179,14 +179,14 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
         </div>
         <div className="space-y-2">
           <h3 className="text-base font-black text-slate-900">🔒 기업 내부 보안 및 정보 감사 열람 통제</h3>
-          <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wider">Access Level Required: [Manager] or [Admin]</p>
+          <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wider">Access Level Required: [Super Admin] or [Active Permit Switch]</p>
         </div>
         <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
-          본 감사 이력 타임라인(Audit Log)은 영업 기밀 유출 방지 및 파이프라인 무단 기작 수정을 실시간 관제하는 내부 감사 화면입니다. Manager(전방 본부장) 및 Admin(이사/관리그룹) 권한에 한해 대시보드가 오픈됩니다.
+          본 감사 이력 타임라인(Audit Log)은 영업 기밀 유출 방지 및 파이프라인 무단 수정을 실시간 관제하는 내부 관리 화면입니다. 슈퍼 어드민 계정 또는 해당 기능 개방 허가를 얻은 일반 유저에 한해 대시보드가 오픈됩니다.
         </p>
         <div className="bg-slate-50 p-4 rounded-2xl text-[11px] font-medium text-slate-500 leading-relaxed border border-slate-100 text-left space-y-2">
-          <p className="font-bold text-slate-700">💡 관람 및 시뮬레이션 방법:</p>
-          <p>화면 상단의 <span className="font-bold text-[#4F46E5] bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">ROLE</span> 셀렉터를 누르신 뒤 <span className="font-bold text-slate-800">최성우 본부장 (Manager)</span> 또는 <span className="font-bold text-slate-800">이도윤 이사 (Admin)</span> 계정으로 전향하시면 복구 보호된 아카이브 및 세부 로그 타임라인 조회 기능이 즉시 정상 구동됩니다.</p>
+          <p className="font-bold text-slate-700">💡 정보 획득 안내:</p>
+          <p>화면 상단의 <span className="font-bold text-slate-800">일반 사용자 계정</span>이 탐색 권한을 가질 수 있도록, 슈퍼 어드민 대시보드 내 "어드민 & 마이그레이션 - 인사 및 구성원" 패널에서 본 계정에 대한 <strong>감사 로그 조회 권한 스위치</strong>를 활성화해 주시면 승인 즉시 열람이 인가됩니다.</p>
         </div>
       </div>
     );
@@ -333,7 +333,7 @@ export default function AuditLogTimeline({ userRole, auditLogs, onRefresh }: Aud
                               ? 'bg-rose-50 text-rose-600 border border-rose-100/50' 
                               : 'bg-indigo-50 text-indigo-600 border border-indigo-100/60'
                           }`}>
-                            {log.userRole === 'Admin' ? 'Admin 최고관리자' : 'Manager 영업팀장'}
+                            {log.userRole === 'Admin' ? 'Super Admin 최고관리자' : 'Normal User 일반사용자'}
                           </span>
                           <span className="text-slate-300">|</span>
                           <span className="text-[10px] text-slate-400 font-bold font-mono">UUID: {log.userId}</span>

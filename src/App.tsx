@@ -4,10 +4,10 @@ import {
   RefreshCw, CheckCircle, Video, Play, ArrowRight, Star, Plus, 
   Trash2, Layers, Award, FileText, ChevronRight, CheckCircle2, UserCheck,
   Check, Trello, BarChart3, Bell, Search, Download, ShieldAlert,
-  Bot, ShieldCheck, Clock
+  Bot, ShieldCheck, Clock, Wrench, BookOpen
 } from 'lucide-react';
 
-import { Brand, Contact, Meeting, SyncStatus, PipelineStatus } from './types';
+import { Brand, Contact, Meeting, SyncStatus, PipelineStatus, Solution, BrandSolution } from './types';
 import { loginWithGoogle, logout as firebaseLogout, auth, db } from './lib/firebase';
 import { createGoogleCalendarEvent, deleteGoogleCalendarEvent, listGoogleCalendarEvents } from './lib/googleCalendar';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -21,8 +21,11 @@ import AuditLogTimeline from './components/AuditLogTimeline';
 import SalesGamification from './components/SalesGamification';
 import AIChatbot from './components/AIChatbot';
 import AdminPanel from './components/AdminPanel';
+import CommandPalette from './components/CommandPalette';
 import { SkeletonBrandMap, ElegantEmptyState } from './components/PremiumComponents';
 import Brand360View from './components/Brand360View';
+import UserGuide from './components/UserGuide';
+import PropertyDetail from './components/PropertyDetail';
 import { motion, AnimatePresence } from 'motion/react';
 
 enum OperationType {
@@ -85,6 +88,8 @@ const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 1800): Promise
 export default function App() {
   // Primary States
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [solutions, setSolutions] = useState<Solution[]>([]);
+  const [brandSolutions, setBrandSolutions] = useState<BrandSolution[]>([]);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -114,7 +119,7 @@ export default function App() {
   });
   const [isSyncingCalendar, setIsSyncingCalendar] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [viewMode, setViewMode] = useState<'profile' | 'pipeline' | 'analytics' | 'audit' | 'chatbot' | 'admin'>('profile');
+  const [viewMode, setViewMode] = useState<'profile' | 'pipeline' | 'analytics' | 'audit' | 'chatbot' | 'admin' | 'backlog' | 'guide' | 'property-detail'>('profile');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
   // Active AI recording output session
@@ -139,14 +144,156 @@ export default function App() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
 
+  // Phase border
   // Phase 8: Enterprise RBAC, Soft Delete Protective Layer & Auditor Timeline Channels
-  const [userRole, setUserRole] = useState<'Admin' | 'Manager' | 'Sales_Rep'>('Admin');
+  const [userRole, setUserRole] = useState<'Admin' | 'Sales_Rep'>('Admin');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [rbacError, setRbacError] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  
+  // Real Multi-user Sync: Firestore approved_users and CRUD managers
+  const [approvedUsers, setApprovedUsers] = useState<any[]>([]);
+  const matchedProfile = approvedUsers.find(u => u.email.toLowerCase() === loginEmail.toLowerCase());
+
+  const canEditPipeline = userRole === 'Admin' || (matchedProfile?.canEditPipeline !== undefined 
+    ? !!matchedProfile.canEditPipeline 
+    : false);
+
+  const canUseAI = userRole === 'Admin' || (matchedProfile?.canUseAI !== undefined 
+    ? !!matchedProfile.canUseAI 
+    : true);
+
+  const canViewAudit = userRole === 'Admin' || (matchedProfile?.canViewAudit !== undefined 
+    ? !!matchedProfile.canViewAudit 
+    : false);
+
+  const canManageUsers = userRole === 'Admin' || (matchedProfile?.canManageUsers !== undefined 
+    ? !!matchedProfile.canManageUsers 
+    : false);
+
+  const canExportCSV = userRole === 'Admin' || (matchedProfile?.canExportCSV !== undefined 
+    ? !!matchedProfile.canExportCSV 
+    : false);
+
+  // Administrative User Addition (real Firestore database execution)
+  const handleAdminAddUser = async (userObj: { 
+    email: string; 
+    name: string; 
+    role: string; 
+    team: string; 
+    avatarUrl: string; 
+    status?: string;
+    canEditPipeline?: boolean;
+    canUseAI?: boolean;
+    canViewAudit?: boolean;
+    canManageUsers?: boolean;
+    canExportCSV?: boolean;
+  }) => {
+    try {
+      const refinedFields = {
+        name: userObj.name,
+        role: userObj.role,
+        team: userObj.team,
+        avatarUrl: userObj.avatarUrl || '',
+        status: userObj.status || 'Active',
+        approvedAt: new Date().toISOString(),
+        canEditPipeline: userObj.canEditPipeline !== undefined ? userObj.canEditPipeline : (userObj.role === 'Admin'),
+        canUseAI: userObj.canUseAI !== undefined ? userObj.canUseAI : true,
+        canViewAudit: userObj.canViewAudit !== undefined ? userObj.canViewAudit : (userObj.role === 'Admin'),
+        canManageUsers: userObj.canManageUsers !== undefined ? userObj.canManageUsers : (userObj.role === 'Admin'),
+        canExportCSV: userObj.canExportCSV !== undefined ? userObj.canExportCSV : (userObj.role === 'Admin')
+      };
+      await setDoc(doc(db, 'approved_users', userObj.email.trim().toLowerCase()), refinedFields);
+      
+      const newAudit = {
+        id: `audit-user-add-${Date.now()}`,
+        userId: loginEmail,
+        userName: matchedProfile?.name || loginEmail,
+        userRole: userRole,
+        action: 'UPDATE_PIPELINE' as any,
+        targetType: 'USER_ROLE',
+        targetName: userObj.email,
+        details: `신규 영업팀 구성원 권한 승인 등록 완료: ${userObj.name} (${userObj.role}, ${userObj.team})`,
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'audit_logs', newAudit.id), newAudit);
+    } catch (err) {
+      console.error("Failed to register new coworker in Firestore:", err);
+      throw err;
+    }
+  };
+
+  // Administrative User Update (real Firestore database execution)
+  const handleAdminUpdateUser = async (email: string, updatedFields: any) => {
+    try {
+      const targetEmail = email.trim().toLowerCase();
+      const fieldsToSave: any = {
+        name: updatedFields.name,
+        role: updatedFields.role,
+        team: updatedFields.team,
+        avatarUrl: updatedFields.avatarUrl || ''
+      };
+      if (updatedFields.status !== undefined) {
+        fieldsToSave.status = updatedFields.status;
+      }
+      if (updatedFields.canEditPipeline !== undefined) fieldsToSave.canEditPipeline = updatedFields.canEditPipeline;
+      if (updatedFields.canUseAI !== undefined) fieldsToSave.canUseAI = updatedFields.canUseAI;
+      if (updatedFields.canViewAudit !== undefined) fieldsToSave.canViewAudit = updatedFields.canViewAudit;
+      if (updatedFields.canManageUsers !== undefined) fieldsToSave.canManageUsers = updatedFields.canManageUsers;
+      if (updatedFields.canExportCSV !== undefined) fieldsToSave.canExportCSV = updatedFields.canExportCSV;
+      
+      await updateDoc(doc(db, 'approved_users', targetEmail), fieldsToSave);
+
+      if (targetEmail === loginEmail.toLowerCase()) {
+        if (updatedFields.role) {
+          setUserRole(updatedFields.role);
+        }
+      }
+
+      const newAudit = {
+        id: `audit-user-upd-${Date.now()}`,
+        userId: loginEmail,
+        userName: matchedProfile?.name || loginEmail,
+        userRole: userRole,
+        action: 'UPDATE_PIPELINE' as any,
+        targetType: 'USER_ROLE',
+        targetName: email,
+        details: `영업 구성원 프로필/역할/상태 설정 실시간 마이그레이션 적용 완료: ${updatedFields.name} (상태: ${updatedFields.status || 'Active'})`,
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'audit_logs', newAudit.id), newAudit);
+    } catch (err) {
+      console.error("Failed to update coworker profiles in Firestore:", err);
+      throw err;
+    }
+  };
+
+  // Administrative User Deletion (real Firestore database execution)
+  const handleAdminDeleteUser = async (email: string) => {
+    try {
+      const targetEmail = email.trim().toLowerCase();
+      await deleteDoc(doc(db, 'approved_users', targetEmail));
+
+      const newAudit = {
+        id: `audit-user-del-${Date.now()}`,
+        userId: loginEmail,
+        userName: matchedProfile?.name || loginEmail,
+        userRole: userRole,
+        action: 'UPDATE_PIPELINE' as any,
+        targetType: 'USER_ROLE',
+        targetName: email,
+        details: `영업 구성원 직급 권한 강제 파기 및 정지 완료: ${email}`,
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'audit_logs', newAudit.id), newAudit);
+    } catch (err) {
+      console.error("Failed to delete user mapping in Firestore:", err);
+      throw err;
+    }
+  };
 
   // B2B Email Draft Generator dispatch handler
   const handleGenerateEmailDraft = async (brandName: string, summary: string, actionItems: string[]) => {
@@ -227,6 +374,18 @@ export default function App() {
         setMeetings(apiMeetings);
       }
       
+      // Fetch solutions and brandSolutions mapping for product-centric segmentation
+      try {
+        const [apiSolutions, apiBrandSolutions] = await Promise.all([
+          fetch('/api/solutions').then(res => res.json()),
+          fetch('/api/brand-solutions').then(res => res.json())
+        ]);
+        setSolutions(apiSolutions);
+        setBrandSolutions(apiBrandSolutions);
+      } catch (solErr) {
+        console.warn("⚠️ Failed to fetch solutions or brandSolutions mappings:", solErr);
+      }
+      
       // Let's pretend calendar sync is fetched still
       fetch('/api/calendar/sync-status').then(r => r.json()).then(resSync => setSyncStatus(resSync));
     } catch (err) {
@@ -249,11 +408,19 @@ export default function App() {
           try {
             const userDoc = await withTimeout(getDoc(userDocRef), 1500);
             if (userDoc.exists()) {
-              userRoleResult = userDoc.data()?.role || 'Sales_Rep';
+              const uData = userDoc.data();
+              if (uData?.status === 'Inactive') {
+                setRbacError("🚫 비활성화된 계정입니다. 해당 서비스 로그인 권한이 제한되었습니다. 최고 관리자에게 문의하세요.");
+                setIsLoggedIn(false);
+                setLoginEmail('');
+                await firebaseLogout();
+                return;
+              }
+              userRoleResult = uData?.role || 'Sales_Rep';
             } else {
               // Auto-approve the internal users and the primary admin
               const defaultRole = isSuperAdmin ? 'Admin' : 'Sales_Rep';
-              setDoc(userDocRef, { approvedAt: new Date().toISOString(), role: defaultRole }).catch(err => {
+              setDoc(userDocRef, { approvedAt: new Date().toISOString(), role: defaultRole, status: 'Active' }).catch(err => {
                 console.warn("Background auto-approval user document write failed:", err);
               });
               userRoleResult = defaultRole;
@@ -270,7 +437,7 @@ export default function App() {
            console.error("Auth verification failed:", err);
            alert('인증 확인 중 오류가 발생했습니다.');
            await firebaseLogout();
-        }
+         }
       } else {
         setIsLoggedIn(false);
         setLoginEmail('');
@@ -279,7 +446,20 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Load backend seed data on mount and subscribe to real-time meeting updates
+  // Reactive automatic real-time logout for deactivated sessions
+  useEffect(() => {
+    if (isLoggedIn && loginEmail && approvedUsers.length > 0) {
+      const currentProfile = approvedUsers.find(u => u.email.toLowerCase() === loginEmail.toLowerCase());
+      if (currentProfile && currentProfile.status === 'Inactive') {
+        alert("🚫 관리자에 의해 계정이 즉각 비활성화되었습니다. 즉시 안전하게 로그아웃 조치됩니다.");
+        setIsLoggedIn(false);
+        setLoginEmail('');
+        firebaseLogout();
+      }
+    }
+  }, [approvedUsers, isLoggedIn, loginEmail]);
+
+  // Load backend seed data on mount and subscribe to real-time sync across multiple collections
   useEffect(() => {
     if (!isLoggedIn) return;
     const fetchInitial = async () => {
@@ -287,19 +467,50 @@ export default function App() {
     };
     fetchInitial();
 
-    console.log("🔌 [REALTIME SYNC] Initiating socket-like onSnapshot observer for Firestore meetings...");
+    console.log("🔌 [REALTIME SYNC] Initiating socket-like onSnapshot observers for multi-user collaboration...");
+    
+    // 1. Live Meetings Sync
     const meetingsCollection = collection(db, 'meetings');
     const unsubscribeMeetings = onSnapshot(meetingsCollection, (snapshot) => {
       const updatedMeetings = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Meeting));
       setMeetings(updatedMeetings);
-      console.log(`🔌 [REALTIME SYNC] Synchronized ${updatedMeetings.length} meetings in real-time.`);
     }, (error) => {
-      console.warn("⚠️ Real-time Firestore onSnapshot observer skipped (bypassed / no permission):", error);
+      console.warn("⚠️ Real-time Firestore meetings sync unavailable:", error);
+    });
+
+    // 2. Live Brands Sync (real relationships, mutual tagging)
+    const brandsCollection = collection(db, 'brands');
+    const unsubscribeBrands = onSnapshot(brandsCollection, (snapshot) => {
+      const updatedBrands = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Brand));
+      setBrands(updatedBrands);
+    }, (error) => {
+      console.warn("⚠️ Real-time Firestore brands sync unavailable:", error);
+    });
+
+    // 3. Live Contacts Sync
+    const contactsCollection = collection(db, 'contacts');
+    const unsubscribeContacts = onSnapshot(contactsCollection, (snapshot) => {
+      const updatedContacts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Contact));
+      setContacts(updatedContacts);
+    }, (error) => {
+      console.warn("⚠️ Real-time Firestore contacts sync unavailable:", error);
+    });
+
+    // 4. Live Logged in Users Sync (RBAC profile synchronizations)
+    const usersCollection = collection(db, 'approved_users');
+    const unsubscribeUsers = onSnapshot(usersCollection, (snapshot) => {
+      const updatedUsers = snapshot.docs.map(d => ({ email: d.id, ...d.data() }));
+      setApprovedUsers(updatedUsers);
+    }, (error) => {
+      console.warn("⚠️ Real-time Firestore approved_users sync unavailable:", error);
     });
 
     return () => {
-      console.log("🔌 [REALTIME SYNC] Unsubscribed from real-time meetings observer.");
+      console.log("🔌 [REALTIME SYNC] Disconnecting socket-like Firestore observers.");
       unsubscribeMeetings();
+      unsubscribeBrands();
+      unsubscribeContacts();
+      unsubscribeUsers();
     };
   }, [isLoggedIn]);
 
@@ -406,6 +617,11 @@ export default function App() {
   const handleUpdateBrandStatus = async (id: string, newStatus: PipelineStatus) => {
     try {
       if (!isLoggedIn) return;
+      if (!canEditPipeline) {
+        setRbacError("🔒 세일즈 칸반 가공(canEditPipeline) 권한이 비활성화 상태입니다. 최고 관리자에게 기능 개방을 요청하세요.");
+        alert("🔒 세일즈 칸반 가공(canEditPipeline) 권한이 비활성화 상태입니다. 최고 관리자에게 기능 개방을 요청하세요.");
+        return;
+      }
       
       try {
         const brandRef = doc(db, 'brands', id);
@@ -459,6 +675,37 @@ export default function App() {
       if (err.code === 'permission-denied') {
         setRbacError("🔒 권한이 없습니다.");
       }
+    }
+  };
+
+  // Update Brand-Solution Status (Product-centric Kanban update - User requested segmentation)
+  const handleUpdateBrandSolutionStatus = async (brandId: string, solutionId: string, newStatus: PipelineStatus) => {
+    try {
+      if (!isLoggedIn) return;
+      if (!canEditPipeline) {
+        setRbacError("🔒 세일즈 칸반 가공(canEditPipeline) 권한이 비활성화 상태입니다. 최고 관리자에게 기능 개방을 요청하세요.");
+        alert("🔒 세일즈 칸반 가공(canEditPipeline) 권한이 비활성화 상태입니다. 최고 관리자에게 기능 개방을 요청하세요.");
+        return;
+      }
+
+      const response = await fetch(`/api/brand-solutions/${brandId}/${solutionId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': userRole
+        },
+        body: JSON.stringify({ pipelineStatus: newStatus })
+      });
+
+      if (response.ok) {
+        setRbacError(null);
+        await refreshAllStates();
+      } else {
+        throw new Error("Failed to update brand-product pipeline status");
+      }
+    } catch (err) {
+      console.error("Failed to update brand solution status:", err);
+      alert("프로덕트별 파이프라인 상태 변경 중 오류가 발생했습니다.");
     }
   };
 
@@ -944,6 +1191,285 @@ export default function App() {
   const totalFnb = brands.filter(b => b.category === 'F&B Brand').length;
   const totalRetail = brands.filter(b => b.category === 'Non-food Brand').length;
 
+  // Collapsible Sidebar, Density mode & Command Palette States
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    const saved = localStorage.getItem('isSidebarCollapsed');
+    return saved === 'true';
+  });
+  const [densityMode, setDensityMode] = useState<'comfortable' | 'compact'>(() => {
+    const saved = localStorage.getItem('densityMode');
+    return saved === 'compact' ? 'compact' : 'comfortable';
+  });
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [isSimulatingLeadFromApp, setIsSimulatingLeadFromApp] = useState(false);
+  const [webhookResult, setWebhookResult] = useState<string | null>(null);
+  const [isSimulatingSlack, setIsSimulatingSlack] = useState(false);
+  const [slackResult, setSlackResult] = useState<string | null>(null);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(prev => {
+      const newVal = !prev;
+      localStorage.setItem('isSidebarCollapsed', String(newVal));
+      return newVal;
+    });
+  };
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
+  const handleSimulateWebbookLeadFromApp = async () => {
+    setIsSimulatingLeadFromApp(true);
+    setWebhookResult(null);
+    try {
+      const potentialLeads = [
+        { brandName: "에그드랍 (Egg Drop)", category: "F&B Brand", storesCount: 220, contactName: "유지혜 대리", description: "테이크아웃 전문 가맹점용 카카오 알림 연동 및 AI 상담 요약 툴 도입 단가 문의." },
+        { brandName: "홍콩반점 0410", category: "F&B Brand", storesCount: 290, contactName: "배상철 실장", description: "백종원 소유 F&B 프랜차이즈 전점 주방 디스플레이 시스템(KDS) 통합 의뢰 문의." },
+        { brandName: "메가MGC커피", category: "F&B Brand", storesCount: 3100, contactName: "안태양 이사", description: "전국 약 3,100여 개 세일즈 거래처 정합 관리에 필요한 CRM AI 피드백 툴 의뢰." },
+        { brandName: "올리브영 (Olive Young)", category: "Non-food Brand", storesCount: 1300, contactName: "이서윤 과장", description: "B2B 가맹점 POS 데이터 백업 및 리얼타임 푸시 알람 동기 서비스 검증 제안." }
+      ];
+      const demoLead = potentialLeads[Math.floor(Math.random() * potentialLeads.length)];
+      
+      const response = await fetch("/api/webhooks/inbound-lead", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer crm-inbound-lead-token-2026"
+        },
+        body: JSON.stringify({
+          brandName: demoLead.brandName,
+          category: demoLead.category,
+          storesCount: demoLead.storesCount,
+          contactName: demoLead.contactName,
+          description: demoLead.description,
+          contactPosition: "본사 신사업 추진 전략팀장",
+          contactEmail: `inbound-${demoLead.brandName.replace(/[^a-zA-Z]/g, '').toLowerCase()}@partnership.co.kr`,
+          phone: "010-4493-2949"
+        })
+      });
+
+      if (response.ok) {
+        setWebhookResult(`[인바운드 웹훅성공] '${demoLead.brandName}' 리드가 가입 유입되었습니다!`);
+        await refreshAllStates();
+        setNotifications(prev => [
+          {
+            id: 'webhook-sim-' + Date.now(),
+            type: 'pipeline',
+            title: `📥 백로그 웹훅 접수 알림`,
+            message: `외장 폼(Typeform)으로부터 거래처 '${demoLead.brandName}' 가 Cold Call 단계로 가입 접수 완료되었습니다.`,
+            isRead: false,
+            createdAt: new Date().toISOString()
+          },
+          ...prev
+        ]);
+      } else {
+        setWebhookResult("❌ 웹훅 유입 접수 실패 (인가 토큰 오류)");
+      }
+    } catch (err) {
+      console.error(err);
+      setWebhookResult("❌ 시뮬레이션 실패: 네트워크 연결 오류");
+    } finally {
+      setIsSimulatingLeadFromApp(false);
+      setTimeout(() => setWebhookResult(null), 5000);
+    }
+  };
+
+  const handleSimulateSlackApp = () => {
+    setIsSimulatingSlack(true);
+    setTimeout(() => {
+      setSlackResult("🔔 슬랙 #sales-deal-room 채널로 파이프라인 변동 요약 JSON 전송 완료 (가상 시뮬레이션)");
+      setIsSimulatingSlack(false);
+      setNotifications(prev => [
+        {
+          id: 'slack-sim-' + Date.now(),
+          type: 'system',
+          title: `💬 Slack 연동 성공 알림`,
+          message: `#sales-deal-room 채널로 계약 가치 및 실시간 알림 데이터가 전송되었습니다.`,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        },
+        ...prev
+      ]);
+      setTimeout(() => setSlackResult(null), 5000);
+    }, 700);
+  };
+
+  const renderBacklogDashboard = () => {
+    return (
+      <div className="space-y-6 font-sans max-w-7xl mx-auto px-4 py-2">
+        <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-3xs space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-indigo-50 rounded-2xl">
+              <Wrench className="w-6 h-6 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-905">📬 B2B CRM 연동 개발 로드맵 및 백로그 가두리</h3>
+              <p className="text-xs text-slate-500 mt-1 lines-normal">
+                본부 업무 몰입도를 높이고 프로덕션 환경을 깔끔하게 유지하기 위해, 미개발/외연 동기화(구글 캘린더, 슬랙 연동, 수동 인바운드 웹훅 유입) 통제 항목들은 백로그 지형에 안전하게 격리되어 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Calendar Sync Item */}
+          <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-3xs space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-extrabold uppercase bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-150">
+                RELEASE DELAYED ⏳ (구글 양방향 캘린더)
+              </span>
+              <span className="text-xs text-slate-400 font-mono">Backlog #01</span>
+            </div>
+            <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-emerald-600" />
+              <span>동기 구글 캘린더 실시간 양방향 전송 체제</span>
+            </h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              본부 미팅 선약이 완료되면, 담당 세일즈맨과 제휴사 담당자의 구글 캘린더에 실시간으로 일정을 전송하고 Google Meet 참여 URL을 자동 탑재해 줍니다.
+            </p>
+            
+            <div className="border-t border-slate-100/80 pt-4 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-bold">Google 연동 상태:</span>
+                {googleAccessToken ? (
+                  <span className="text-emerald-600 font-bold flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    연결됨 (보안 토큰 유효)
+                  </span>
+                ) : (
+                  <span className="text-slate-400 font-bold">미연결</span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {!googleAccessToken ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const loginRes = await loginWithGoogle();
+                        if (loginRes && loginRes.accessToken) {
+                          setGoogleAccessToken(loginRes.accessToken);
+                          alert("OAuth 2.0 구글 연동 완료!");
+                        }
+                      } catch (e) {
+                        alert("연동 실패: " + e);
+                      }
+                    }}
+                    className="w-full text-center py-2.5 bg-indigo-650 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl cursor-pointer shadow-3xs transition-all"
+                  >
+                    Google OAuth 2.0 인증 갱신 및 토큰 가져오기 🔑
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setGoogleAccessToken(null)}
+                    className="w-full text-center py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold text-xs rounded-xl cursor-pointer transition-all"
+                  >
+                    구글 연동 해제 (토큰 삭제)
+                  </button>
+                )}
+
+                <button
+                  onClick={handleCalendarSync}
+                  disabled={isSyncingCalendar}
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/50 rounded-xl font-black text-xs disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCalendar ? 'animate-spin' : ''}`} />
+                  <span>실시간 구글 캘린더 강제 수동 동기화 ({syncStatus.syncedEventsCount}건)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Webhook Lead Item */}
+          <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-3xs space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-extrabold uppercase bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md border border-indigo-150">
+                SANDBOX RUNNING 🧪 (인바운드 웹훅 유입)
+              </span>
+              <span className="text-xs text-slate-400 font-mono">Backlog #02</span>
+            </div>
+            <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <span>Typeform 외부 리드 유입 API 연동</span>
+            </h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              본사 제휴 랜딩 및 외부 설문 입력창 접수 시 대외비 보안 토큰을 수반하여 가망 거래처의 성명, 매장 규모 등의 데이터가 자동으로 칸반 Cold Call 단계로 인바운드 접수 처리되는 구조입니다.
+            </p>
+            
+            <div className="border-t border-slate-101 pt-4 space-y-2.5">
+              <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-[10px] font-mono text-slate-500 leading-normal overflow-x-auto">
+                로컬 API: <code>/api/webhooks/inbound-lead</code>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleSimulateWebbookLeadFromApp}
+                  disabled={isSimulatingLeadFromApp}
+                  className="w-full text-center py-2.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-[#4F46E5] font-black text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSimulatingLeadFromApp ? 'animate-spin' : ''}`} />
+                  <span>외부 리드 인바운드 웹훅 가상 유입 기동</span>
+                </button>
+
+                {webhookResult && (
+                  <p className="text-[10px] text-indigo-600 text-center font-black bg-indigo-50/45 p-1.5 rounded-lg border border-indigo-150/40 animate-pulse">
+                    {webhookResult}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Slack Webhook Item */}
+          <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-3xs space-y-4 lg:col-span-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-extrabold uppercase bg-rose-50 text-rose-750 px-2.5 py-1 rounded-md border border-rose-150">
+                PENDING SPEC ⏱️ (슬랙 실시간 채널 피드)
+              </span>
+              <span className="text-xs text-slate-400 font-mono">Backlog #03</span>
+            </div>
+            <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+              <span className="text-rose-500">⚡</span>
+              <span>Slack Webhook 거래처 진전 현황 실시간 동보 전송</span>
+            </h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              사내 특정 채널 (예: <code>#sales-deal-room</code>)로 빅딜 완료 혹은 파이프라인 협상 단계 가치가 실시간 변동될 때 영업 성과 비동기 푸시 알림을 자동 발송하는 기술입니다.
+            </p>
+            
+            <div className="border-t border-slate-101 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="bg-slate-50/50 p-2.5 rounded-xl text-[10px] font-mono text-slate-500 leading-relaxed flex-1">
+                Webhook URL: <code>https://hooks.slack.com/services/T00000000/B00000000/...</code>
+              </div>
+
+              <div className="shrink-0">
+                <button
+                  onClick={handleSimulateSlackApp}
+                  disabled={isSimulatingSlack}
+                  className="px-4 py-2.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 font-extrabold text-xs rounded-xl cursor-pointer transition-all flex items-center gap-1"
+                >
+                  <span>슬랙 가상 메신저 전송 테스트 {isSimulatingSlack ? '(추출...)' : '(Mock Webhook)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {slackResult && (
+              <p className="text-[10.5px] text-rose-700 font-extrabold bg-[#FFF1F2] border border-rose-200/50 p-2 rounded-xl text-center shadow-4xs animate-slideIn">
+                {slackResult}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -964,7 +1490,7 @@ export default function App() {
         <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-[#03C75A]/10 rounded-full filter blur-3xl animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-400/8 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         
-        <div className="glass-card p-8 rounded-[36px] max-w-sm w-full space-y-6 relative z-10 shadow-xl text-center animate-fadeIn border border-white/50">
+        <div className="glass-card p-8 rounded-[36px] max-w-sm w-full space-y-6 relative z-10 shadow-xl text-center animate-fadeIn border border-white/50 bg-white">
           <div className="space-y-2">
             <div className="w-14 h-14 bg-gradient-to-tr from-[#03C75A] to-[#10b981] text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md shadow-[#03C75A]/25">
               <Building2 className="w-6.5 h-6.5" />
@@ -972,6 +1498,13 @@ export default function App() {
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">B2B Sales CRM</h1>
             <p className="text-xs text-slate-500 font-bold leading-normal">영업 파이프라인 관리 시스템 로그인</p>
           </div>
+          
+          {rbacError && (
+            <div className="bg-rose-50 border border-rose-100/80 text-rose-800 rounded-2xl p-3.5 text-[11px] font-bold text-left leading-relaxed animate-fadeIn">
+              <span className="text-rose-500 font-black block mb-1">⚠️ 보안 통제 안내</span>
+              {rbacError}
+            </div>
+          )}
           
           <form onSubmit={handleLogin} className="space-y-3 pt-1">
             <button 
@@ -1011,390 +1544,333 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-slate-800 flex flex-col antialiased">
+    <div className="min-h-screen bg-slate-50/70 text-slate-800 flex antialiased overflow-hidden font-sans">
       
-      {/* Dynamic Brand CRM Navigation Ribbon */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-indigo-50/75 px-4 py-2.5 sm:px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="p-2 bg-blue-500/10 rounded-xl">
-            <Building2 className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-sm font-black tracking-tight text-slate-900 sm:text-base">
-              B2B Brand Sales CRM
-            </h1>
-            <p className="text-[10px] text-slate-400 font-medium">영업팀 전용 구글 연동 및 AI 회의 요약</p>
-          </div>
-        </div>
-
-        {/* Global Combined Intelligent Search bar (Phase 7 Core Requirement) */}
-        <div className="hidden md:flex relative flex-1 max-w-sm lg:max-w-md mx-6">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="파트너 브랜드명, 담당 바이어, 회의 키워드 통합 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchOpen(true)}
-              className="w-full text-xs pl-9 pr-8 py-2 bg-slate-100 hover:bg-slate-200/60 focus:bg-white focus:ring-2 focus:ring-indigo-505/20 focus:border-indigo-500 rounded-xl border border-transparent transition-all outline-none"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => { setSearchQuery(''); setSearchResults(null); }}
-                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
-              >
-                ✕
-              </button>
+      {/* 1. Collapsible Left Sidebar (LNB) for Desktop Work Speed & Context Retention */}
+      <aside 
+        className={`backdrop-blur-xl bg-white/75 text-slate-705 border-r border-[#03C75A]/15 flex flex-col justify-between transition-all duration-300 z-30 shrink-0 select-none shadow-[4px_0_24px_rgba(3,199,90,0.02)] ${
+          isSidebarCollapsed ? "w-16" : "w-64"
+        }`}
+      >
+        <div className="flex flex-col">
+          {/* Sidebar Header Title / logo */}
+          <div className="p-4 border-b border-indigo-50/70 flex items-center gap-3">
+            <div className="p-2 bg-[#03C75A]/10 rounded-xl text-[#01893d] shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="animate-fadeIn">
+                <h1 className="text-xs font-black tracking-tight text-slate-900 uppercase">
+                  B2B Brand CRM
+                </h1>
+                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest font-mono mt-0.5">
+                  CRM Node Enterprise
+                </p>
+              </div>
             )}
           </div>
 
-          {/* Autocomplete Dropdown suggestions */}
-          {isSearchOpen && searchResults && (
-            <div className="absolute top-11 left-0 right-0 bg-white border border-slate-200/85 rounded-2xl shadow-xl z-50 overflow-hidden max-h-96 overflow-y-auto">
-              <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">통합 Intelligent 검색 결과</span>
-                <button 
-                  onClick={() => setIsSearchOpen(false)}
-                  className="text-[10px] text-[#4F46E5] hover:text-indigo-600 font-extrabold"
-                >
-                  닫기
-                </button>
+          {/* Quick User Identity Badge */}
+          <div className="p-3 border-b border-indigo-50/70 bg-slate-50/50 flex items-center gap-2.5">
+            {matchedProfile?.avatarUrl ? (
+              <img 
+                src={matchedProfile.avatarUrl} 
+                alt={matchedProfile.name || loginEmail}
+                referrerPolicy="no-referrer"
+                className="w-7 h-7 rounded-lg object-cover border border-slate-200 shadow-3xs shrink-0"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-xs uppercase shadow-3xs shrink-0">
+                {(matchedProfile?.name || loginEmail).charAt(0)}
               </div>
+            )}
+            {!isSidebarCollapsed && (
+              <div className="flex flex-col items-start leading-none animate-fadeIn truncate">
+                <span className="text-[11px] font-black text-slate-800 truncate w-full">
+                  {matchedProfile?.name || loginEmail.split('@')[0]}
+                </span>
+                <span className="text-[8px] font-black text-[#01893d] bg-[#dafbe4]/80 px-1.5 py-0.5 rounded border border-[#c6f6d5] tracking-wide mt-1">
+                  {matchedProfile?.role || userRole}
+                </span>
+              </div>
+            )}
+          </div>
 
-              {/* Brands results */}
-              {searchResults.brands.length > 0 && (
-                <div className="p-2 border-b border-slate-100 bg-slate-50/30">
-                  <span className="text-[9px] font-bold text-slate-400 px-2 block mb-1">🏬 거래처 브랜드 ({searchResults.brands.length})</span>
-                  {searchResults.brands.map(brand => (
+          {/* Vertical Menu Navigation list */}
+          <nav className="p-2.5 space-y-1">
+            <button
+              onClick={() => setViewMode('profile')}
+              title="활동 타임라인 및 브랜드 리스트"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'profile'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <Clock className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn">활동 타임라인</span>}
+            </button>
+
+            <button
+              onClick={() => setViewMode('property-detail')}
+              title="가맹 자산 상세 포트폴리오 및 키맨/상담 이력 조회"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'property-detail'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <Building2 className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn flex items-center gap-1.5">자산 마스터 상세 <span className="text-[8px] uppercase font-mono px-1 bg-emerald-500 text-white font-extrabold rounded-md ml-0.5">detail</span></span>}
+            </button>
+
+            <button
+              onClick={() => setViewMode('guide')}
+              title="통합 CRM 사용 가이드 해설서"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'guide'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn flex items-center gap-1">사용설명 가이드 <span className="text-[8px] uppercase font-mono px-1 bg-rose-500 text-white font-extrabold rounded-md ml-0.5 animate-pulse">new</span></span>}
+            </button>
+
+            <button
+              onClick={() => setViewMode('pipeline')}
+              title="B2B CRM 세일즈 파이프라인 칸반 대시보드"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'pipeline'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <Trello className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn">세일즈 칸반</span>}
+            </button>
+
+            <button
+              onClick={() => setViewMode('analytics')}
+              title="영업 목표 실적 및 파이프라인 통계 분석"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'analytics'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn">영업 퀄리파이어</span>}
+            </button>
+
+            <button
+              onClick={() => setViewMode('chatbot')}
+              title="RAG 기반 AI 영업 비서 인앱 도우미"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'chatbot'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <Bot className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn flex items-center gap-1">AI 영업 비서 {!canUseAI && '🔒'}</span>}
+            </button>
+
+            <button
+              onClick={() => setViewMode('audit')}
+              title="보안 감사 이력 기록 로그 추적기"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'audit'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <FileText className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn flex items-center gap-1">보안 감사 {!canViewAudit && '🔒'}</span>}
+            </button>
+
+            <button
+              onClick={() => setViewMode('admin')}
+              title="전사 권한 할당 및 사용자 관리 통제소"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'admin'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15 font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn flex items-center gap-1">어드민 백앤드 {!canManageUsers && '🔒'}</span>}
+            </button>
+
+            {/* Specialized Roadmap / Sandbox view which contains Calendar Sync & Webhook simulation */}
+            <button
+              onClick={() => setViewMode('backlog')}
+              title="백로그 로드맵 및 서드파티 통합 샌드박스"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'backlog'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 font-medium'
+              }`}
+            >
+              <Wrench className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="animate-fadeIn">연동대기 백로그 🧪</span>}
+            </button>
+          </nav>
+        </div>
+
+        {/* Sidebar Footer with toggles and collapsible trigger */}
+        <div className="p-3 border-t border-indigo-50/70 bg-slate-50/30 space-y-3 shrink-0">
+          {/* Collapsible trigger chevron button */}
+          <button
+            onClick={toggleSidebar}
+            className="w-full h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-lg border border-slate-200 transition-colors cursor-pointer font-black"
+            title={isSidebarCollapsed ? "메뉴 보기 늘리기" : "메뉴 보기 줄이기"}
+          >
+            {isSidebarCollapsed ? (
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            ) : (
+              <div className="flex items-center gap-1 text-[10px] font-black tracking-tight text-slate-500">
+                <span>◀ 사이드바 접기</span>
+              </div>
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {/* 2. Main Content Container Area */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        
+        {/* Compact Workspace Header */}
+        <header className="bg-white/80 backdrop-blur-md border-b border-indigo-50/50 px-8 py-5.5 z-20 shrink-0 flex items-center justify-between shadow-[0_2px_12px_rgba(3,199,90,0.01)]">
+          <div className="flex items-center gap-2 text-slate-800">
+            {/* View indicators */}
+            <span className="text-[10px] font-black text-indigo-650 bg-indigo-50 border border-indigo-150 rounded-lg px-2.5 py-1 uppercase tracking-wider font-mono">
+              STAGE
+            </span>
+            <span className="text-xs text-slate-350">/</span>
+            <span className="text-xs font-black text-slate-900 leading-tight">
+              {viewMode === 'profile' && '⏳ 실시간 프랜차이즈 거래 정합 피드'}
+              {viewMode === 'guide' && '📚 B2B CRM 통합 사용 설명 가이드'}
+              {viewMode === 'property-detail' && '🏢 B2B 가맹 자산 상세 포트폴리오'}
+              {viewMode === 'pipeline' && '📋 CRM 영업 진행 칸반 보드'}
+              {viewMode === 'analytics' && '📊 파이프라인 실적 계측기'}
+              {viewMode === 'chatbot' && '💬 RAG AI 영업 컨설팅 센터'}
+              {viewMode === 'audit' && '🔒 엔터프라이즈 보안 감사 기록'}
+              {viewMode === 'admin' && '🛠️ 최고 관리자 설정 및 권한 통제'}
+              {viewMode === 'backlog' && '📬 릴리즈 대기 백로그 & 개발 시뮬레이터'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Command Palette Trigger Input */}
+            <button 
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="hidden md:flex items-center justify-between w-64 lg:w-80 px-3 py-2 bg-slate-100/85 hover:bg-slate-150 border border-slate-200/50 rounded-xl transition-all text-slate-400 text-xs text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Search className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-450 text-[11px] font-medium">단축키 검색...</span>
+              </div>
+              <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-white border border-slate-200 rounded-lg shadow-4xs text-[8px] font-mono font-black text-slate-400">
+                <span>⌘K</span>
+              </div>
+            </button>
+
+            {/* Export CSV Report */}
+            <button
+              onClick={handleExportCsv}
+              disabled={isExporting}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border bg-white border-slate-200 hover:bg-slate-50 text-slate-700 transition-all cursor-pointer"
+            >
+              <Download className="w-3 h-3 text-indigo-500" />
+              <span>{isExporting ? '추출중...' : 'CSV 추출'}</span>
+            </button>
+
+            {/* Notifications Alert Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="relative p-2 rounded-xl hover:bg-slate-150 border border-slate-200 transition-all select-none cursor-pointer flex items-center justify-center bg-white"
+              >
+                <Bell className="w-3.5 h-3.5 text-indigo-500" />
+                {notifications.some(n => !n.isRead) && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white font-black text-[9px] flex items-center justify-center rounded-full ring-2 ring-white animate-pulse">
+                    {notifications.filter(n => !n.isRead).length}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification contents panel */}
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200/80 rounded-2xl shadow-xl z-50 overflow-hidden font-sans">
+                  <div className="p-3 bg-slate-50 border-b border-indigo-50/70 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-indigo-600 uppercase">알림 목록 ({notifications.filter(n => !n.isRead).length})</span>
                     <button
-                      key={brand.id}
-                      onClick={() => {
-                        setSelectedBrandId(brand.id);
-                        setIsDrawerOpen(true);
-                        setIsSearchOpen(false);
-                      }}
-                      className="w-full text-left font-sans text-xs px-2.5 py-1.5 hover:bg-white hover:shadow-2xs rounded-lg flex items-center justify-between transition-all cursor-pointer"
+                      onClick={handleReadAllNotifications}
+                      className="text-[9px] font-bold text-slate-500 hover:text-indigo-600 bg-white border px-2 py-0.5 rounded"
                     >
-                      <span className="font-bold text-slate-800">{brand.name}</span>
-                      <span className="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">{brand.pipelineStatus}</span>
+                      전체 읽음
                     </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Contacts results */}
-              {searchResults.contacts.length > 0 && (
-                <div className="p-2 border-b border-slate-100">
-                  <span className="text-[9px] font-bold text-slate-400 px-2 block mb-1">👤 담당 바이어 ({searchResults.contacts.length})</span>
-                  {searchResults.contacts.map(contact => {
-                    const br = brands.find(b => b.id === contact.brandId);
-                    return (
-                      <button
-                        key={contact.id}
-                        onClick={() => {
-                          setSelectedBrandId(contact.brandId);
-                          setIsDrawerOpen(true);
-                          setIsSearchOpen(false);
-                        }}
-                        className="w-full text-left font-sans text-xs px-2.5 py-1.5 hover:bg-slate-50 rounded-lg flex flex-col transition-all cursor-pointer"
-                      >
-                        <div className="flex justify-between w-full">
-                          <span className="font-bold text-slate-800">{contact.name} ({contact.position})</span>
-                          {br && <span className="text-[8px] font-bold text-indigo-500">{br.name}</span>}
+                  </div>
+                  <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-5 text-center text-[10.5px] text-slate-400">알림 피드가 비어있습니다.</div>
+                    ) : (
+                      notifications.slice(0, 10).map(n => (
+                        <div 
+                          key={n.id} 
+                          onClick={() => handleReadNotification(n.id)}
+                          className={`p-3 text-[10.5px] hover:bg-slate-50 transition-all cursor-pointer relative ${!n.isRead ? 'bg-indigo-50/20' : ''}`}
+                        >
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className="font-bold text-slate-800">{n.title}</span>
+                            <span className="text-[9px] text-slate-400 font-mono">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p className="text-slate-500 leading-tight">{n.message}</p>
                         </div>
-                        <span className="text-[9.5px] text-slate-400 font-mono mt-0.5">{contact.email}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Meetings results */}
-              {searchResults.meetings.length > 0 && (
-                <div className="p-2 bg-slate-50/20">
-                  <span className="text-[9px] font-bold text-slate-400 px-2 block mb-1">📅 회의록 및 액션아이템 ({searchResults.meetings.length})</span>
-                  {searchResults.meetings.map(meet => {
-                    const br = brands.find(b => b.id === meet.brandId);
-                    return (
-                      <button
-                        key={meet.id}
-                        onClick={() => {
-                          setSelectedBrandId(meet.brandId);
-                          setIsDrawerOpen(true);
-                          setIsSearchOpen(false);
-                        }}
-                        className="w-full text-left font-sans text-xs px-2.5 py-1.5 hover:bg-white hover:shadow-2xs rounded-lg flex flex-col transition-all cursor-pointer"
-                      >
-                        <div className="flex justify-between w-full">
-                          <span className="font-bold text-slate-800 line-clamp-1">{meet.title}</span>
-                          {br && <span className="text-[8px] font-bold text-indigo-500 shrink-0 ml-1">{br.name}</span>}
-                        </div>
-                        {meet.summary && (
-                          <span className="text-[10px] text-slate-500 mt-1 line-clamp-2 bg-slate-50 p-1.5 rounded border border-slate-100 leading-relaxed font-sans">{meet.summary}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {searchResults.brands.length === 0 && searchResults.contacts.length === 0 && searchResults.meetings.length === 0 && (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  ⚠️ 일치하는 단어가 없습니다. 키워드를 변경해 보십시오.
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Global Action Handlers Area */}
-        <div className="flex items-center gap-2 shrink-0">
-
-          {/* Zen Aesthetic Minimalist Switch (Subtraction Aesthetic) */}
-          <button
-            onClick={() => setIsZenMode(!isZenMode)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black tracking-tight border transition-all duration-300 select-none cursor-pointer ${
-              isZenMode 
-                ? 'bg-slate-900 border-slate-900 text-slate-100 shadow-md shadow-slate-905/20 scale-[1.02]' 
-                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-55'
-            }`}
-            title="불필요한 요소를 제거하고 여백과 주요 딜에만 집중하는 '덜어냄의 미학' 레이아웃을 활성화합니다."
-          >
-            <span className="relative flex h-2 w-2">
-              {isZenMode && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              )}
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isZenMode ? 'bg-emerald-500' : 'bg-slate-350'}`}></span>
-            </span>
-            <span>{isZenMode ? '덜어냄 🧘' : '기본 구성'}</span>
-          </button>
-
-          {/* Simulated user identity and logout */}
-          <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 px-2 rounded-xl border border-slate-200 shadow-3xs">
-            <ShieldAlert className="w-3.5 h-3.5 text-[#4F46E5] shrink-0" />
-            <span className="hidden xl:inline text-[9px] font-extrabold text-[#4F46E5] tracking-wider px-1.5 py-0.5">{loginEmail} ({userRole})</span>
+            {/* Logout */}
             <button
               onClick={() => {
                 setIsLoggedIn(false);
                 setLoginEmail('');
                 setLoginPassword('');
               }}
-              className="text-[9px] font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 ml-1 transition-all"
+              className="text-[10px] font-black text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100/50 rounded-xl px-2.5 py-1.5 transition-all cursor-pointer shadow-3xs"
             >
               로그아웃
             </button>
           </div>
-          
-          {/* CSV Export Button (Phase 7 Core Requirement, updated with secure JS dispatch) */}
-          <button
-            onClick={handleExportCsv}
-            disabled={isExporting}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold border shadow-2xs transition-all select-none cursor-pointer ${
-              isExporting 
-                ? 'bg-slate-50 border-slate-100 text-slate-400' 
-                : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
-            }`}
-            title="CRM 전체 데이터 엑셀(CSV) 추출 다운로드"
-          >
-            <Download className={`w-3.5 h-3.5 ${isExporting ? 'text-slate-350 animate-spin' : 'text-indigo-500'}`} />
-            <span className="hidden lg:inline">{isExporting ? '추출중...' : '보고서 CSV 추출'}</span>
-          </button>
+        </header>
 
-          {/* In-App Bell Notification Dropdown Button (Phase 7 Core Requirement) */}
-          <div className="relative">
-            <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative p-2 rounded-xl hover:bg-slate-100 border border-slate-200 transition-all select-none cursor-pointer flex items-center justify-center animate-fadeIn"
+        {/* Corporate RBAC Safety Warn Banner */}
+        {rbacError && (
+          <div className="bg-[#FFF1F2] border-b border-rose-100 p-3 px-5 flex items-center justify-between text-xs text-rose-800 animate-fadeIn shrink-0">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0" />
+              <span className="font-extrabold text-[#E11D48] bg-white border border-rose-200/50 px-1.5 py-0.5 rounded uppercase font-mono text-[9px] tracking-wider shrink-0 font-sans">ACCESS RESTRICTED</span>
+              <p className="font-semibold text-[11px] sm:text-xs leading-relaxed font-sans">{rbacError}</p>
+            </div>
+            <button 
+              onClick={() => setRbacError(null)}
+              className="text-[10px] bg-white border border-rose-200 text-[#E11D48] hover:text-rose-800 hover:bg-rose-100/30 px-2.5 py-1 rounded-lg transition-all font-black shrink-0 cursor-pointer font-sans"
             >
-              <Bell className={`w-3.5 h-3.5 text-indigo-550 ${notifications.some(n => !n.isRead) ? 'animate-wiggle' : 'hover:animate-wiggle'}`} />
-              {notifications.some(n => !n.isRead) && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white font-black text-[9px] flex items-center justify-center rounded-full ring-2 ring-white">
-                  {notifications.filter(n => !n.isRead).length}
-                </span>
-              )}
-            </button>
-
-            {/* Notifications Menu list dropdown */}
-            {isNotifOpen && (
-              <div className="absolute right-0 mt-3.5 w-80 bg-white border border-slate-200/80 rounded-2xl shadow-xl z-50 overflow-hidden">
-                <div className="p-3 bg-slate-50 border-b border-indigo-55/35 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">실시간 인앱 알림 체널</span>
-                  {notifications.some(n => !n.isRead) && (
-                    <button
-                      onClick={handleReadAllNotifications}
-                      className="text-[9px] font-bold text-slate-500 hover:text-indigo-600 border border-slate-200 bg-white px-2 py-0.5 rounded transition-all cursor-pointer"
-                    >
-                      모두 읽음
-                    </button>
-                  )}
-                </div>
-
-                <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-slate-400 font-sans">
-                      체크인된 실시간 영업 뉴스 알림이 없습니다.
-                    </div>
-                  ) : (
-                    notifications.map(notif => (
-                      <div 
-                        key={notif.id}
-                        onClick={() => handleReadNotification(notif.id)}
-                        className={`p-3 font-sans text-xs hover:bg-slate-50 transition-all cursor-pointer relative ${!notif.isRead ? 'bg-indigo-50/20' : ''}`}
-                      >
-                        <div className="flex items-center gap-1.5 mb-1 justify-between">
-                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-lg ${
-                            notif.type === 'pipeline' 
-                              ? 'bg-rose-50 text-rose-600 border border-rose-100/50' 
-                              : notif.type === 'action_item'
-                              ? 'bg-amber-50 text-amber-600 border border-amber-100/50'
-                              : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
-                          }`}>
-                            {notif.type === 'pipeline' ? '파이프라인' : notif.type === 'action_item' ? '후속 미션' : '시스템'}
-                          </span>
-                          <span className="text-[9px] text-slate-400 font-mono shrink-0">
-                            {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-slate-850 text-[11px] mb-0.5">{notif.title}</h4>
-                        <p className="text-[10px] text-slate-500 leading-relaxed font-sans">{notif.message}</p>
-                        
-                        {!notif.isRead && (
-                          <span className="absolute top-3.5 right-3.5 w-1.5 h-1.5 bg-[#4F46E5] rounded-full"></span>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Global Google Calendar sync status button */}
-          <button
-            onClick={handleCalendarSync}
-            disabled={isSyncingCalendar}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/50 disabled:opacity-50 transition-all select-none cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCalendar ? 'animate-spin' : ''}`} />
-            <span className="hidden lg:inline">구글 캘린더 동기화 ({syncStatus.syncedEventsCount})</span>
-            <span className="lg:hidden">동기화 ({syncStatus.syncedEventsCount})</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Corporate RBAC Security & Safety Enforcement Warn Banner */}
-      {rbacError && (
-        <div className="bg-[#FFF1F2] border-b border-rose-100 p-3 px-4 sm:px-6 flex items-center justify-between text-xs text-rose-800 animate-fadeIn">
-          <div className="flex items-center gap-2 max-w-5xl">
-            <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0" />
-            <span className="font-extrabold text-[#E11D48] bg-white border border-rose-200/50 px-1.5 py-0.5 rounded uppercase font-mono text-[9px] tracking-wider shrink-0">ACCESS RESTRICTED</span>
-            <p className="font-semibold leading-relaxed text-[11px] sm:text-xs">{rbacError}</p>
-          </div>
-          <button 
-            onClick={() => setRbacError(null)}
-            className="text-[10px] bg-white border border-rose-200 text-[#E11D48] hover:text-rose-800 hover:bg-rose-100/30 px-2 py-1 rounded-lg transition-all font-black ml-4 shrink-0 cursor-pointer"
-          >
-            확인 ✕
-          </button>
-        </div>
-      )}
-
-      {/* View Mode Switching Ribbon */}
-      <div className="glass-panel sticky top-[57px] z-30 border-b border-white/40 p-4 px-4 sm:px-6 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-[#01893d] uppercase tracking-widest bg-[#dafbe4] px-2.5 py-1 rounded-md border border-[#a2f2bd]">
-              <Sparkles className="w-3.5 h-3.5 text-[#03C75A] animate-pulse" />
-              <span>세일즈 기회 다차원 시각화</span>
-            </span>
-            <h2 className="text-sm font-black text-slate-900 mt-1.5">
-              {viewMode === 'profile' 
-                ? '⏳ 대규모 프랜차이즈 영업 활동 및 AI 음성 원터치 피드' 
-                : viewMode === 'pipeline' 
-                ? '📋 B2B CRM 세일즈 파이프라인 Trello 칸반 대시보드' 
-                : viewMode === 'audit'
-                ? '🔒 B2B CRM 엔터프라이즈 보안 및 데이터 감사 이력 추적 (Audit Logs)'
-                : viewMode === 'chatbot'
-                ? '💬 RAG 기반 AI 영업 어시스턴트 (PostgreSQL pgvector 유사도 탐색)'
-                : viewMode === 'admin'
-                ? '🛠️ CRM 전사 데이터 마이그레이션 및 실시간 사용자 권한 통제 센터'
-                : '📊 실시간 영업 활동 성과 및 파이프라인 전환율 분석'}
-            </h2>
-          </div>
-          
-          <div className="flex flex-wrap bg-slate-200/50 backdrop-blur-md p-1.5 rounded-2xl items-center gap-1 border border-black/5 select-none shrink-0 shadow-3xs">
-            <button
-              onClick={() => setViewMode('profile')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-black tracking-tight transition-all duration-250 cursor-pointer ${
-                viewMode === 'profile'
-                  ? 'bg-[#03C75A] text-white shadow-md shadow-[#03C75A]/25'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>활동 타임라인</span>
-            </button>
-            <button
-              onClick={() => setViewMode('pipeline')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-black tracking-tight transition-all duration-250 cursor-pointer ${
-                viewMode === 'pipeline'
-                  ? 'bg-[#03C75A] text-white shadow-md shadow-[#03C75A]/25'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-              }`}
-            >
-              <Trello className="w-3.5 h-3.5" />
-              <span>세일즈 칸반</span>
-            </button>
-            <button
-              onClick={() => setViewMode('analytics')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-black tracking-tight transition-all duration-250 cursor-pointer ${
-                viewMode === 'analytics'
-                  ? 'bg-[#03C75A] text-white shadow-md shadow-[#03C75A]/25'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>영업 통계</span>
-            </button>
-            <button
-              onClick={() => setViewMode('chatbot')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-black tracking-tight transition-all duration-250 cursor-pointer ${
-                viewMode === 'chatbot'
-                  ? 'bg-[#03C75A] text-white shadow-md shadow-[#03C75A]/25'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-              }`}
-            >
-              <Bot className="w-3.5 h-3.5" />
-              <span>AI 영업 비서</span>
-            </button>
-            <button
-              onClick={() => setViewMode('audit')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-black tracking-tight transition-all duration-250 cursor-pointer ${
-                viewMode === 'audit'
-                  ? 'bg-[#03C75A] text-white shadow-md shadow-[#03C75A]/25'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>보안 감사 {userRole !== 'Sales_Rep' && auditLogs.length > 0 ? `(${auditLogs.length})` : ''}</span>
-            </button>
-            <button
-              onClick={() => setViewMode('admin')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-black tracking-tight transition-all duration-250 cursor-pointer ${
-                viewMode === 'admin'
-                  ? 'bg-[#03C75A] text-white shadow-md shadow-[#03C75A]/25'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>어드민 & 마이그레이션</span>
+              ✕ 닫기
             </button>
           </div>
-        </div>
-      </div>
+        )}
 
-      {viewMode === 'analytics' ? (
+      {viewMode === 'guide' ? (
+        <main className="flex-1 w-full max-w-7xl mx-auto px-5 py-6">
+          <UserGuide />
+        </main>
+      ) : viewMode === 'analytics' ? (
         <main className="flex-1 w-full max-w-7xl mx-auto px-3.5 py-4 sm:py-6 space-y-6">
           <SalesGamification 
             userRole={userRole} 
@@ -1408,6 +1884,9 @@ export default function App() {
           <PipelineBoard 
             brands={brands}
             meetings={meetings}
+            solutions={solutions}
+            brandSolutions={brandSolutions}
+            onUpdateBrandSolutionStatus={handleUpdateBrandSolutionStatus}
             isLoading={loading}
             onUpdateBrandStatus={handleUpdateBrandStatus}
             onSelectBrand={(id) => {
@@ -1421,34 +1900,141 @@ export default function App() {
         </main>
       ) : viewMode === 'audit' ? (
         <main className="flex-1 w-full max-w-7xl mx-auto px-3.5 py-4 sm:py-6 animate-fadeIn">
-          <AuditLogTimeline 
-            userRole={userRole}
-            auditLogs={auditLogs}
-            onRefresh={fetchAuditLogs}
-          />
+          {!canViewAudit ? (
+            <div className="flex flex-col items-center justify-center p-12 bg-white/70 backdrop-blur-md rounded-3xl border border-slate-200 text-center max-w-xl mx-auto my-12 animate-fadeIn space-y-4 shadow-3xs">
+              <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                <ShieldAlert className="w-8 h-8 text-amber-500" />
+              </div>
+              <h3 className="text-sm font-black text-slate-800">🔒 보안 감사 기록 접근 보호 (Feature Controlled)</h3>
+              <p className="text-xs text-slate-550 leading-relaxed max-w-md">
+                현재 로그인한 영업 계정은 최고 관리자가 관리자 패널에서 설정한 개별 기능 스위치 통제 규약에 의해 <strong className="text-slate-700">[보안 감사 로그 이력]</strong> 탐색 및 조회 수급 자격이 일시 정지 상태입니다.
+              </p>
+              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-500 w-full text-left">
+                💡 보장 내역: 사내 포렌식 이력 추적 및 탐색 권한 제한 (403 Forbidden)
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold">
+                🔔 소속 가맹전략영업본부 최고 최고관리자에게 개별 기능 스위치(Switch) 활성화를 요청해 주세요.
+              </p>
+              
+              <div className="pt-4 mt-2 w-full border-t border-slate-150 flex flex-col items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase">⚡ 데모 제어판: 시뮬레이션 권한 변경</span>
+                <button
+                  id="btn-switch-admin-audit"
+                  onClick={() => {
+                    setUserRole('Admin');
+                    setRbacError(null);
+                  }}
+                  className="px-4 py-2 bg-[#03C75A] hover:bg-[#02b350] text-white font-extrabold text-[11px] rounded-xl cursor-pointer shadow-3xs transition-all flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  슈퍼 어드민 (Super Admin) 권한으로 복귀하기
+                </button>
+              </div>
+            </div>
+          ) : (
+            <AuditLogTimeline 
+              userRole={userRole}
+              auditLogs={auditLogs}
+              onRefresh={fetchAuditLogs}
+            />
+          )}
         </main>
       ) : viewMode === 'chatbot' ? (
         <main className="flex-1 w-full max-w-4xl mx-auto px-3.5 py-4 sm:py-6 animate-fadeIn font-sans">
-          <AIChatbot 
-            userRole={userRole}
-            onSelectBrand={(id) => {
-              setSelectedBrandId(id);
-              setIsDrawerOpen(true);
-            }}
-          />
+          {!canUseAI ? (
+            <div className="flex flex-col items-center justify-center p-12 bg-white/70 backdrop-blur-md rounded-3xl border border-slate-200 text-center max-w-xl mx-auto my-12 animate-fadeIn space-y-4 shadow-3xs">
+              <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                <ShieldAlert className="w-8 h-8 text-amber-500" />
+              </div>
+              <h3 className="text-sm font-black text-slate-800">🔒 AI 영업 비서 인공지능 차단 (Feature Controlled)</h3>
+              <p className="text-xs text-slate-550 leading-relaxed max-w-md">
+                현재 로그인한 영업 계정은 최고 관리자가 설정한 개별 개발 기능 수동 제어 규약에 의해 <strong className="text-slate-700">[Gemini 1.5 RAG 대화형 인공지능 비서]</strong> 가동 권한이 일시 제한되었습니다.
+              </p>
+              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-500 w-full text-left">
+                💡 보장 내역: Gemini 1.5 어시스턴스, 영업 미팅 요약 및 제안 교차 기획 가이드 차단
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold">
+                🔔 소속 최고 관리자에게 해당 계정의 &apos;AI 영업 비서 사용&apos; 개별 스위치 개봉을 요청하세요.
+              </p>
+
+              <div className="pt-4 mt-2 w-full border-t border-slate-150 flex flex-col items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase">⚡ 데모 제어판: 시뮬레이션 권한 변경</span>
+                <button
+                  id="btn-switch-admin-ai"
+                  onClick={() => {
+                    setUserRole('Admin');
+                    setRbacError(null);
+                  }}
+                  className="px-4 py-2 bg-[#03C75A] hover:bg-[#02b350] text-white font-extrabold text-[11px] rounded-xl cursor-pointer shadow-3xs transition-all flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  슈퍼 어드민 (Super Admin) 권한으로 복귀하기
+                </button>
+              </div>
+            </div>
+          ) : (
+            <AIChatbot 
+              userRole={userRole}
+              onSelectBrand={(id) => {
+                setSelectedBrandId(id);
+                setIsDrawerOpen(true);
+              }}
+            />
+          )}
         </main>
       ) : viewMode === 'admin' ? (
         <main className="flex-1 w-full max-w-7xl mx-auto px-3.5 py-4 sm:py-6 animate-fadeIn">
-          <AdminPanel
-            brands={brands}
-            contacts={contacts}
-            meetings={meetings}
-            userRole={userRole}
-            onChangeUserRole={(newRole) => setUserRole(newRole)}
-            currentUserEmail={loginEmail}
-            onRefreshCrmState={refreshAllStates}
-            auditLogsCount={auditLogs.length}
-          />
+          {!canManageUsers ? (
+            <div className="flex flex-col items-center justify-center p-12 bg-white/70 backdrop-blur-md rounded-3xl border border-slate-205 text-center max-w-xl mx-auto my-12 animate-fadeIn space-y-4 shadow-3xs">
+              <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                <ShieldAlert className="w-8 h-8 text-amber-500" />
+              </div>
+              <h3 className="text-sm font-black text-slate-800">🔒 인사 통제 및 조직 마이그레이션 센터 제한</h3>
+              <p className="text-xs text-slate-550 leading-relaxed max-w-md">
+                현재 로그인한 협조원 계정은 최고 관리자가 지정한 개별 보안 기능 통제에 의해 <strong className="text-slate-700">[어드민 대시보드 및 마이그레이션 실행 도구]</strong> 접근권이 제한되어 있습니다.
+              </p>
+              <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-[10px] font-medium text-slate-500 w-full text-left">
+                💡 보장 내역: 신규 구성원 승인 등록, 개별 스위치 조율, CSV 백업 및 데이터베이스 파기/이식 도구 통제
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold">
+                🔔 최고 통제권을 가진 Super Admin 직속 계정에만 열려 있는 통제 공간입니다.
+              </p>
+
+              <div className="pt-4 mt-2 w-full border-t border-slate-200/50 flex flex-col items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase">⚡ 데모 제어판: 시뮬레이션 권한 변경</span>
+                <button
+                  id="btn-switch-admin-manage"
+                  onClick={() => {
+                    setUserRole('Admin');
+                    setRbacError(null);
+                  }}
+                  className="px-4 py-2 bg-[#03C75A] hover:bg-[#02b350] text-white font-extrabold text-[11px] rounded-xl cursor-pointer shadow-3xs transition-all flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  슈퍼 어드민 (Super Admin) 권한으로 복귀하기
+                </button>
+              </div>
+            </div>
+          ) : (
+            <AdminPanel
+              brands={brands}
+              contacts={contacts}
+              meetings={meetings}
+              userRole={userRole}
+              onChangeUserRole={(newRole) => setUserRole(newRole)}
+              currentUserEmail={loginEmail}
+              onRefreshCrmState={refreshAllStates}
+              auditLogsCount={auditLogs.length}
+              approvedUsers={approvedUsers}
+              onAdminAddUser={handleAdminAddUser}
+              onAdminUpdateUser={handleAdminUpdateUser}
+              onAdminDeleteUser={handleAdminDeleteUser}
+            />
+          )}
+        </main>
+      ) : viewMode === 'backlog' ? (
+        <main className="flex-1 w-full max-w-7xl mx-auto px-3.5 py-4 sm:py-6 animate-fadeIn">
+          {renderBacklogDashboard()}
         </main>
       ) : (
         <main className="flex-1 w-full max-w-7xl mx-auto px-3.5 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -1771,7 +2357,7 @@ export default function App() {
               <div className="flex justify-between items-center pb-2.5 border-b border-indigo-50/55">
                 <div>
                   <h3 className="font-bold text-slate-850 text-xs sm:text-sm">세일즈 히스토리 및 영림 피드</h3>
-                  <p className="text-[10px] text-slate-450 font-semibold">시간과 관계 다차원을 통해 가맹 영업 진척도를 관리합니다. 가맹사를 선택하면 360° 상세 분석 정보를 확인할 수 있습니다.</p>
+                  <p className="text-[10.5px] text-slate-400 font-medium">가맹점 발굴 및 실시간 미팅 조율 상담 피드백 공간입니다.</p>
                 </div>
                 <button
                   onClick={() => setIsAddingMeeting(!isAddingMeeting)}
@@ -2314,6 +2900,21 @@ export default function App() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Global Command Palette search panel */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        brands={brands}
+        contacts={contacts}
+        meetings={meetings}
+        setViewMode={setViewMode}
+        onSelectBrand={(id) => {
+          setSelectedBrandId(id);
+          setIsDrawerOpen(true);
+        }}
+      />
+    </div>
     </div>
   );
 }

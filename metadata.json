@@ -1,6 +1,6 @@
 {
   "name": "PropTech Sales CRM",
   "description": "B2B SaaS and PropTech productivity tool featuring Google Calendar sync, AI meeting summaries, and spatial client/property mapping.",
-  "requestFramePermissions": ["microphone"],
+  "requestFramePermissions": ["microphone", "camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { 
   Building2, ArrowLeft, ArrowRight, TrendingUp, DollarSign, 
   MapPin, CheckCircle, Smartphone, Award, Sparkles, MoveRight, RefreshCw, Star,
-  PlusCircle, Shuffle
+  PlusCircle, Shuffle, Layers, Briefcase
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Brand, PipelineStatus, ProposalSubStage, Meeting } from "../types";
+import { Brand, PipelineStatus, ProposalSubStage, Meeting, Solution, BrandSolution } from "../types";
 import { ConfettiEffect } from "./Confetti";
 
 interface PipelineBoardProps {
@@ -17,6 +17,10 @@ interface PipelineBoardProps {
   onRefreshNeeded?: () => Promise<void>;
   onUpdateProposalSubStage?: (id: string, subStage: ProposalSubStage) => Promise<void>;
   isZenMode?: boolean;
+  solutions?: Solution[];
+  brandSolutions?: BrandSolution[];
+  onUpdateBrandSolutionStatus?: (brandId: string, solutionId: string, newStatus: PipelineStatus) => Promise<void>;
+  densityMode?: 'comfortable' | 'compact';
 }
 
 const STAGES: { id: PipelineStatus; name: string; color: string; bg: string; text: string; desc: string }[] = [
@@ -62,10 +66,16 @@ export default function PipelineBoard({
   onSelectBrand, 
   onRefreshNeeded, 
   onUpdateProposalSubStage,
-  isZenMode = false 
+  isZenMode = false,
+  solutions = [],
+  brandSolutions = [],
+  onUpdateBrandSolutionStatus,
+  densityMode = 'comfortable'
 }: PipelineBoardProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [confettiActiveBrandId, setConfettiActiveBrandId] = useState<string | null>(null);
+  const [viewType, setViewType] = useState<'brand' | 'product'>('brand');
+  const [selectedSolutionId, setSelectedSolutionId] = useState<string>('sol-1');
   
   // Inbound Webhook simulation states
   const [isSimulatingLead, setIsSimulatingLead] = useState(false);
@@ -200,12 +210,16 @@ export default function PipelineBoard({
     if (newIndex !== currentIndex) {
       setUpdatingId(brandId);
       try {
-        await onUpdateBrandStatus(brandId, sequence[newIndex]);
+        if (viewType === 'product' && onUpdateBrandSolutionStatus) {
+          await onUpdateBrandSolutionStatus(brandId, selectedSolutionId, sequence[newIndex]);
+        } else {
+          await onUpdateBrandStatus(brandId, sequence[newIndex]);
+        }
         if (sequence[newIndex] === "Deal Completed") {
           setConfettiActiveBrandId(brandId);
         }
       } catch (err) {
-        console.error("Failed to transition brand status:", err);
+        console.error("Failed to transition brand/product status:", err);
       } finally {
         setUpdatingId(null);
       }
@@ -218,33 +232,68 @@ export default function PipelineBoard({
         <div>
           <h3 className="font-extrabold text-[#111827] text-sm sm:text-base flex items-center gap-1.5">
             <Award className="w-5 h-5 text-indigo-550" />
-            <span>세일즈 칸반 {isZenMode ? "🧘 덜어냄 뷰" : "파이프라인 보드"}</span>
+            <span>세일즈 칸반 파이프라인 보드</span>
           </h3>
-          <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
-            {isZenMode 
-              ? "중요 딜에 집중할 수 있도록 복잡한 장식과 버튼을 덜어내고, AI 기반 리드 스코어와 가중 매출 분석만 정갈하게 노출합니다."
-              : "B2B 영업 고객사들의 협상 단계를 라이브 트래킹합니다. Salesforce/HubSpot 핵심 연동 기법이 적용되어 있습니다."
-            }
+          <p className="text-[11.5px] text-slate-400 font-medium mt-0.5">
+            B2B 영업 고객사들의 협상 및 도입 단계를 실시간으로 트래킹하고 통합 관리합니다.
           </p>
         </div>
         
-        {/* Hiding noisy testing tool buttons when Zen mode is active for peak subtraction aesthetics */}
-        {!isZenMode && (
-          <div className="flex flex-wrap items-center gap-2 animate-fadeIn">
+        {/* Noisy simulation buttons removed to keep production views professional - moved to development backlog tab */}
+      </div>
+
+      {/* 뷰 타입 및 프로덕트 선택 관제 데스크 (세련된 기업용 B2B 탭 디자인) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-150 shadow-4xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 mr-2">
+            <Layers className="w-4 h-4 text-indigo-550 shrink-0" />
+            <span className="text-xs font-black text-slate-700">칸반 조회 기준:</span>
+          </div>
+          <div className="bg-slate-200/50 p-1 rounded-xl flex gap-1">
             <button
-              onClick={handleSimulateWebhookLead}
-              disabled={isSimulatingLead}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-110 hover:bg-indigo-100/50 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer ${
-                isSimulatingLead ? "opacity-50 cursor-wait animate-pulse" : ""
+              onClick={() => setViewType('brand')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewType === 'brand'
+                  ? 'bg-white text-indigo-700 shadow-3xs font-black'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Shuffle className={`w-3.5 h-3.5 ${isSimulatingLead ? "animate-spin" : ""}`} />
-              <span>외부 리드 웹훅 유입 {isSimulatingLead ? "(유입 가동중...)" : "(Typeform Webhook)"}</span>
+              🏢 고유 브랜드 단위
             </button>
+            <button
+              onClick={() => setViewType('product')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewType === 'product'
+                  ? 'bg-white text-indigo-700 shadow-3xs font-black'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              🔌 제안 프로덕트 단위
+            </button>
+          </div>
+        </div>
 
-            <span className="text-[10px] font-black text-slate-400 bg-slate-55 border border-slate-150 px-2 py-2.5 rounded-2xl">
-              Slack 연동 ⚡
+        {viewType === 'product' && solutions && solutions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 animate-fadeIn">
+            <span className="text-[11px] font-extrabold text-slate-500 mr-1 flex items-center gap-1">
+              <Briefcase className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span>프로덕트 세밀 매니저:</span>
             </span>
+            <div className="flex flex-wrap gap-1 bg-white p-1 rounded-xl border border-slate-150">
+              {solutions.map((sol) => (
+                <button
+                  key={sol.id}
+                  onClick={() => setSelectedSolutionId(sol.id)}
+                  className={`px-3 py-1 text-xs font-black rounded-lg transition-all border cursor-pointer ${
+                    selectedSolutionId === sol.id
+                      ? 'bg-indigo-600 text-white border-indigo-650 shadow-xs'
+                      : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{sol.name.split(' (')[0]}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -272,9 +321,205 @@ export default function PipelineBoard({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {STAGES.map((stage) => {
-          const stageBrands = brands.filter((b) => b.pipelineStatus === stage.id);
+      {viewType === 'matrix' ? (
+        <div className="bg-white rounded-[24px] border border-slate-200 overflow-hidden shadow-2xs animate-fadeIn font-sans">
+          
+          {/* 매트릭스 상단 요약 데스크 */}
+          <div className="p-5 bg-slate-50 border-b border-slate-200/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-750 border border-indigo-150 px-2.5 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-wider font-mono">
+                <Sparkles className="w-3 h-3 text-indigo-600 animate-spin" style={{ animationDuration: '3s' }} />
+                <span>Cross-Selling Matrix Mode ⚡</span>
+              </span>
+              <h4 className="text-xs font-black text-slate-850 mt-1.5">
+                4대 세일즈 가맹 솔루션 크로스셀링 종합 현황판
+              </h4>
+              <p className="text-[10px] text-slate-400 font-bold leading-normal mt-0.5">
+                전체 파트너 거래처의 솔루션 도입 경과를 한눈에 통제합니다. 셀 내부의 단계를 직접 전환하며 다각도 침투 전략을 수립하세요.
+              </p>
+            </div>
+
+            {/* Matrix 보급 통계 */}
+            <div className="flex gap-4 p-2.5 bg-white rounded-2xl border border-slate-150 shadow-4xs shrink-0 self-start md:self-auto">
+              <div className="text-center px-2">
+                <p className="text-[9px] text-slate-400 font-bold">전체 교차 보급률</p>
+                <p className="text-xs font-black text-indigo-600 mt-0.5">
+                  {(() => {
+                    const totalPossible = brands.length * 4;
+                    const closedDeals = brandSolutions.filter(bs => bs.pipelineStatus === 'Deal Completed').length;
+                    return totalPossible > 0 ? ((closedDeals / totalPossible) * 100).toFixed(0) + '%' : '0%';
+                  })()}
+                </p>
+              </div>
+              <div className="h-8 w-px bg-slate-150 self-center"></div>
+              <div className="text-center px-2">
+                <p className="text-[9px] text-slate-400 font-bold">완전 계약 종결사</p>
+                <p className="text-xs font-black text-emerald-600 mt-0.5">
+                  {(() => {
+                    const perfects = brands.filter(b => {
+                      const list = brandSolutions.filter(bs => bs.brandId === b.id);
+                      return list.length === 4 && list.every(bs => bs.pipelineStatus === 'Deal Completed');
+                    }).length;
+                    return `${perfects} / ${brands.length}개사`;
+                  })()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto text-xs">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 text-[10px] font-black uppercase text-slate-450 border-b border-slate-200">
+                  <th className="p-4 pl-6">🏬 가맹 파트너 브랜드</th>
+                  {solutions.map((sol) => (
+                    <th key={sol.id} className="p-4 font-sans font-black text-slate-800 tracking-tight">
+                      🔌 {sol.name.split(' (')[0]}
+                    </th>
+                  ))}
+                  <th className="p-4 text-center">🏆 최종 도입 진척</th>
+                  <th className="p-4 pr-6 text-center">프로필/조회</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {brands.map((brand) => {
+                  const mappings = brandSolutions.filter(bs => bs.brandId === brand.id);
+                  const closedCount = mappings.filter(bs => bs.pipelineStatus === 'Deal Completed').length;
+                  const ratioPercent = Math.round((closedCount / 4) * 100);
+
+                  return (
+                    <tr key={brand.id} className="hover:bg-slate-50/40 transition-colors">
+                      <td className="p-4 pl-6">
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-xl bg-indigo-50/80 border border-indigo-100/60 flex items-center justify-center font-black text-[11px] text-indigo-700 shadow-4xs">
+                            {brand.logo}
+                          </span>
+                          <div>
+                            <p className="font-extrabold text-slate-900 text-[11.5px]">{brand.name}</p>
+                            <p className="text-[9px] text-slate-450 font-bold mt-0.5">{brand.category} • {brand.targetStoresCount}개 지점</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 4 solution columns with interactive quick statuses */}
+                      {solutions.map((sol) => {
+                        const mapping = mappings.find(m => m.solutionId === sol.id);
+                        const status = mapping ? mapping.pipelineStatus : 'Cold Call';
+
+                        // Dropdown inline edit mode
+                        return (
+                          <td key={sol.id} className="p-4">
+                            <div className="relative">
+                              <select
+                                value={status}
+                                onChange={async (e) => {
+                                  if (onUpdateBrandSolutionStatus) {
+                                    setUpdatingId(brand.id);
+                                    try {
+                                      await onUpdateBrandSolutionStatus(brand.id, sol.id, e.target.value as PipelineStatus);
+                                    } catch (err) {
+                                      console.error("Failed to update solution quick status:", err);
+                                    } finally {
+                                      setUpdatingId(null);
+                                    }
+                                  }
+                                }}
+                                className={`text-[10px] font-black rounded-xl p-2 px-3.5 border outline-none cursor-pointer transition-all ${
+                                  status === 'Deal Completed'
+                                    ? 'bg-emerald-50 text-emerald-850 border-emerald-250 hover:bg-emerald-100/50'
+                                    : status === 'Proposal & Negotiation'
+                                    ? 'bg-amber-50 text-amber-850 border-amber-250 hover:bg-amber-100/50'
+                                    : status === 'First Meeting'
+                                    ? 'bg-blue-50 text-blue-850 border-blue-250 hover:bg-blue-100/50'
+                                    : 'bg-slate-55 text-slate-500 border-slate-200/70 hover:bg-slate-100/80'
+                                }`}
+                              >
+                                <option value="Cold Call">📞 콜드콜 접촉</option>
+                                <option value="First Meeting">🤝 첫 대면 미팅</option>
+                                <option value="Proposal & Negotiation">⏳ 제안 및 협상</option>
+                                <option value="Deal Completed">🏆 최종 계약 완료</option>
+                              </select>
+                            </div>
+                          </td>
+                        );
+                      })}
+
+                      {/* 완료율 */}
+                      <td className="p-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-18 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-300 ${closedCount === 4 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-indigo-500'}`} 
+                              style={{ width: `${ratioPercent}%` }}
+                            ></div>
+                          </div>
+                          <span className={`text-[9.5px] font-black ${closedCount === 4 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                            {closedCount === 4 ? '도입종결 🏆' : `${ratioPercent}% (${closedCount}/4)`}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 조치 */}
+                      <td className="p-4 pr-6 text-center">
+                        <button
+                          onClick={() => onSelectBrand?.(brand.id)}
+                          className="px-3 py-1.5 text-[9.5px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100/80 hover:bg-indigo-100 rounded-xl transition-all cursor-pointer shadow-4xs"
+                        >
+                          조회 🔍
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 ${densityMode === 'compact' ? 'gap-2.5' : 'gap-4'}`}>
+          {STAGES.map((stage) => {
+          // Extract matching items based on user-centric brand view or product-centric granular view
+          const stageItems = (() => {
+            if (viewType === 'brand') {
+              return brands
+                .filter((b) => b.pipelineStatus === stage.id)
+                .map(b => ({
+                  ...b,
+                  uniqueKey: `brand-${b.id}`,
+                  isProductCard: false,
+                  displayDesc: b.description,
+                  displayRevenue: b.monthlyRevenueEst
+                }));
+            } else {
+              const sol = solutions.find(s => s.id === selectedSolutionId);
+              return brandSolutions
+                .filter(bs => bs.solutionId === selectedSolutionId && bs.pipelineStatus === stage.id)
+                .map(bs => {
+                  const b = brands.find(brand => brand.id === bs.brandId);
+                  if (!b) return null;
+                  
+                  // Product specific weighted revenue: typically 35% of total brand estimate
+                  const totalRev = parseRevenueEst(b.monthlyRevenueEst);
+                  const prodRevEst = (totalRev * 0.35); // 35% share for specific solution
+                  
+                  // Re-format into a pretty string in Korean
+                  const formattedProdRev = `월평균 ${(prodRevEst / 10000000).toFixed(0)}천만원 선 제안`;
+
+                  return {
+                    ...b,
+                    uniqueKey: `prod-${b.id}-${bs.solutionId}`,
+                    isProductCard: true,
+                    solutionId: bs.solutionId,
+                    solutionName: sol?.name,
+                    solutionCode: sol?.code,
+                    displayDesc: `[${sol?.name.split(' (')[0]}] 협상 진척 - 부서: ${bs.department || '가맹총괄'}`,
+                    displayRevenue: formattedProdRev,
+                    rawBrand: b
+                  };
+                })
+                .filter(Boolean) as any[];
+            }
+          })();
           
           return (
             <div 
@@ -288,24 +533,24 @@ export default function PipelineBoard({
                     {stage.name}
                   </span>
                   <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                    stageBrands.length > 0 ? "bg-white shadow-3xs" : "bg-slate-200/50 text-slate-450"
+                    stageItems.length > 0 ? "bg-white shadow-3xs" : "bg-slate-200/50 text-slate-450"
                   }`}>
-                    {stageBrands.length}
+                    {stageItems.length}
                   </span>
                 </div>
 
                 {/* Salesforce Dynamic Weighted Deal Value Forecast */}
-                {stageBrands.length > 0 && (
+                {stageItems.length > 0 && (
                   <div className="flex items-center justify-between text-[8px] text-slate-500 font-mono mt-0.5 bg-white/50 px-2 py-1 rounded-xl border border-slate-100/40">
                     <span className="font-bold">가중 기댓값 (Est)</span>
                     <span className="font-extrabold text-indigo-700">
                       ₩{(() => {
-                        const totalVal = stageBrands.reduce((acc, b) => {
-                          const parsed = parseRevenueEst(b.monthlyRevenueEst);
+                        const totalVal = stageItems.reduce((acc, item) => {
+                          const parsed = parseRevenueEst(item.displayRevenue || item.monthlyRevenueEst);
                           const prob = stage.id === "Cold Call" ? 0.15 : stage.id === "First Meeting" ? 0.40 : stage.id === "Proposal & Negotiation" ? 0.75 : 1.0;
                           return acc + (parsed * prob);
                         }, 0);
-                        return (totalVal / 100000000).toFixed(1) + "억원";
+                        return (totalVal / 100000000).toFixed(2) + "억원";
                       })()}
                     </span>
                   </div>
@@ -321,8 +566,8 @@ export default function PipelineBoard({
               {/* Column Content */}
               <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[420px] pr-1 relative">
                 <AnimatePresence mode="popLayout">
-                  {stageBrands.length > 0 ? (
-                    stageBrands.map((brand) => {
+                  {stageItems.length > 0 ? (
+                    stageItems.map((brand) => {
                       const isUpdating = updatingId === brand.id;
                       const canMovePrev = stage.id !== "Cold Call";
                       const canMoveNext = stage.id !== "Deal Completed";
@@ -338,7 +583,7 @@ export default function PipelineBoard({
                         const diff = Math.max(0, new Date().getTime() - new Date(latestMeet.dateTime).getTime());
                         daysElapsed = Math.floor(diff / (1000 * 60 * 60 * 24));
                       } else {
-                        // Deterministic fallback so that brand-3 (MUJI HQ) triggers a beautiful >14 days warning on startup!
+                        // Fallbacks
                         if (brand.id === 'brand-3') {
                           daysElapsed = 17;
                         } else if (brand.id === 'brand-4') {
@@ -353,7 +598,7 @@ export default function PipelineBoard({
 
                       return (
                           <motion.div 
-                            key={brand.id}
+                            key={brand.uniqueKey}
                             layout
                             initial={{ opacity: 0, scale: 0.95, y: 15 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -371,7 +616,9 @@ export default function PipelineBoard({
                               damping: 25,
                               layout: { type: "spring", stiffness: 350, damping: 28 }
                             }}
-                            className={`p-4 rounded-2xl transition-all duration-300 relative group cursor-pointer border ${
+                            className={`transition-all duration-300 relative group cursor-pointer border ${
+                              densityMode === 'compact' ? 'p-3 rounded-xl' : 'p-4 rounded-2xl'
+                            } ${
                               isZenMode 
                                 ? "bg-white/60 hover:bg-white border-slate-101 hover:border-slate-250 hover:shadow-xs" 
                                 : "glass-card border-white/60 hover:border-emerald-300 shadow-sm"
@@ -425,12 +672,12 @@ export default function PipelineBoard({
                           {!isZenMode && (
                             <>
                               <p className="line-clamp-2 italic text-slate-400 pr-1 leading-normal animate-fadeIn">
-                                {brand.description}
+                                {brand.displayDesc || brand.description}
                               </p>
                               
-                              <div className="flex items-center justify-between text-[9px] font-semibold text-slate-600 mt-2 bg-slate-50/50 p-1.5 rounded-lg border border-slate-100/30 animate-fadeIn">
+                              <div className="flex items-center justify-between text-[9px] font-semibold text-slate-600 mt-2 bg-slate-50/50 p-1.5 rounded-lg border border-slate-101 animate-fadeIn">
                                 <span>예상 가치:</span>
-                                <span className="text-indigo-600 font-bold">{brand.monthlyRevenueEst}</span>
+                                <span className="text-indigo-600 font-bold">{brand.displayRevenue || brand.monthlyRevenueEst}</span>
                               </div>
                             </>
                           )}
@@ -458,7 +705,7 @@ export default function PipelineBoard({
                           </div>
                         </div>
 
-                        {brand.pipelineStatus === "Proposal & Negotiation" && !isZenMode && (
+                        {brand.pipelineStatus === "Proposal & Negotiation" && !isZenMode && !brand.isProductCard && (
                           <div className="mt-2.5 pt-2 border-t border-dashed border-slate-100">
                             <div className="flex items-center justify-between gap-1 mb-1.5">
                               <span className="text-[8px] font-bold text-slate-400">
@@ -518,8 +765,8 @@ export default function PipelineBoard({
                           </div>
                         )}
 
-                        {/* Transition Controllers */}
-                        <div className={`flex items-center justify-between mt-3.5 pt-2.5 border-t ${
+                        {/* Transition Controllers - Hidden by default, progressive disclosure on mouse-hover */}
+                        <div className={`flex items-center justify-between mt-3.5 pt-2.5 border-t md:opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
                           isZenMode ? "border-slate-100/40" : "border-slate-100/70"
                         } font-sans`}>
                           <button
@@ -589,6 +836,7 @@ export default function PipelineBoard({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

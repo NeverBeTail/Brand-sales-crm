@@ -7,6 +7,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import cron from "node-cron";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 
 dotenv.config();
@@ -19,14 +20,15 @@ const firebaseConfig = JSON.parse(
   fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8")
 );
 
-if (admin.apps.length === 0) {
-  admin.initializeApp({
-    projectId: firebaseConfig.projectId
-  });
-}
+const appInstance = admin.apps.length === 0
+  ? admin.initializeApp({
+      projectId: firebaseConfig.projectId
+    })
+  : admin.app();
+
 const firestoreAdminDb = firebaseConfig.firestoreDatabaseId 
-  ? admin.firestore(firebaseConfig.firestoreDatabaseId)
-  : admin.firestore();
+  ? getFirestore(appInstance, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(appInstance);
 
 // Enable trust proxy globally to correctly identify client IPs behind GFE / reverse proxy
 app.set("trust proxy", 1);
@@ -1479,6 +1481,107 @@ app.get("/api/audit-logs", (req, res) => {
     });
   }
   res.json((db as any).auditLogs);
+});
+
+// GET Backup list
+app.get("/api/backups", (req, res) => {
+  const userRole = req.headers["x-user-role"] as string || "Admin";
+  if (userRole === "Sales_Rep") {
+    return res.status(403).json({
+      error: "🔒 일반 영업사원은 백업 권한이 통제되어 있습니다."
+    });
+  }
+  res.json(db.backups);
+});
+
+// POST Manual Backup Trigger
+app.get("/api/backups/trigger", (req, res) => {
+  // Gracefully handle accidental GET requests to trigger endpoint
+  res.status(405).json({ error: "Method Not Allowed. Please use POST to trigger a manual backup." });
+});
+
+app.post("/api/backups/trigger", (req, res) => {
+  const userRole = req.headers["x-user-role"] as string || "Admin";
+  if (userRole === "Sales_Rep") {
+    return res.status(403).json({
+      error: "🔒 일반 영업사원은 백업 변경 권한이 통제되어 있습니다."
+    });
+  }
+
+  const rowCount = db.brands.filter((b: any) => !b.deletedAt).length + db.contacts.length + db.meetings.length + db.auditLogs.length;
+  const timestamp = new Date().toISOString().replace(/T/, '_').replace(/:/g, '').substring(0, 15);
+  const fileName = `B2B_CRM_Postgres_Backup_Manual_${timestamp}.tar.gz`;
+
+  const newBackup = {
+    id: `backup-manual-${Date.now()}`,
+    fileName,
+    status: "COMPLETED" as const,
+    databaseSize: "25.3 MB",
+    recordsCount: rowCount,
+    details: "수동 촉발 로컬 덤프 가동: 디스크 사본 미러링 및 클라우드 S3 인스턴스 전송 무결성 정합성 검증 완료.",
+    createdAt: new Date().toISOString()
+  };
+
+  db.backups.unshift(newBackup);
+
+  const newAudit = {
+    id: `log-manual-backup-${Date.now()}`,
+    userId: "manual-trigger",
+    userName: "System Operator (Manual Run)",
+    userRole: userRole as any,
+    action: "EXPORT_CSV" as any,
+    targetType: "DATABASE_BACKUP",
+    targetName: fileName,
+    details: `관리용 물리 백업 스냅샷 수동 가동 완료: ${fileName}. PostgreSQL pg_dump 이진 압축 패키지 생성 가동 완료.`,
+    createdAt: new Date().toISOString()
+  };
+  db.auditLogs.unshift(newAudit);
+
+  res.json({ backup: newBackup });
+});
+
+// POST Sentry Error Simulation Trigger
+app.post("/api/sentry/trigger-error", (req, res) => {
+  const { errorType } = req.body;
+  const sentryEventId = `evt-${Math.random().toString(36).substring(2, 11).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+  
+  let capturedErrorMessage = "";
+  let stacktrace = "";
+
+  if (errorType === "NullPointerException") {
+    capturedErrorMessage = "NullPointerException: Attempt to invoke virtual method 'String.toLowerCase()' on a null object reference at com.b2bcrm.sales.pipeline.LeadAssigner.getDomain(LeadAssigner.java:142)";
+    stacktrace = `java.lang.NullPointerException: Attempt to invoke virtual method 'String.toLowerCase()' on a null object reference
+    at com.b2bcrm.sales.pipeline.LeadAssigner.getDomain(LeadAssigner.java:142)
+    at com.b2bcrm.sales.pipeline.LeadAssigner.processLead(LeadAssigner.java:83)
+    at com.b2bcrm.sales.controller.LeadController.dispatchLead(LeadController.java:214)
+    at javax.servlet.http.HttpServlet.service(HttpServlet.java:612)
+    at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:196)`;
+  } else if (errorType === "RateLimitExceeded") {
+    capturedErrorMessage = "RateLimitExceededException: Client IP '112.214.38.109' exceeded B2B API Token Bucket allocation (Max 150 req/min)";
+    stacktrace = `RateLimitExceededException: API usage throttle triggered!
+    at middleware.RateLimiter.consume(rateLimiter.ts:54)
+    at express.Router.handleRequest(router.ts:112)
+    at node:internal/process/task_queues:95:5
+    at async express.Application.handle(app.ts:203)`;
+  } else {
+    // DatabaseConnectionTimeout or default
+    capturedErrorMessage = "DatabaseConnectionTimeout: PostgreSQL pool exhausted. Idle connections: 0, Active connections: 50. Timeout waiting for connection after 15000ms.";
+    stacktrace = `DatabaseConnectionTimeout: PostgreSQL thread pool exhausted!
+    at node_modules/pg-pool/index.js:332:11
+    at pool.connect(timeout: 15000)
+    at db.connector.acquireConnection(db.ts:241)
+    at db.query.executeTransaction(db.ts:412)
+    at async express.Application.databaseProxy(dbProxy.ts:98)`;
+  }
+
+  res.json({
+    success: true,
+    sentryEventId,
+    capturedErrorMessage,
+    stacktrace,
+    dispatchedNotification: "#dev-ops slack notification dispatched with priority HIGH",
+    timestamp: new Date().toISOString()
+  });
 });
 
 // SSE Stream for Real-time Connection

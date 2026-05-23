@@ -54,11 +54,11 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
       <div className="flex justify-between items-center pb-2.5 border-b border-indigo-50/70">
         <div>
           <h3 className="font-bold text-slate-800 text-sm">새로운 세일즈 일정 예약</h3>
-          <p className="text-[10px] text-slate-400">구글 캘린더 양방향 동기화 자동 진행</p>
+          <p className="text-[10px] text-slate-450 leading-normal">CRM 로컬 통합 데이터베이스 보존 일정 등록</p>
         </div>
-        <div className="flex items-center gap-1 bg-blue-50/70 rounded-full px-2.5 py-1 text-[9px] font-extrabold text-blue-700">
-          <Calendar className="w-3 h-3 text-blue-500" />
-          <span>REAL-TIME GOOGLE SYNC</span>
+        <div className="flex items-center gap-1 bg-indigo-50/70 rounded-full px-2.5 py-1 text-[9px] font-extrabold text-indigo-700">
+          <Calendar className="w-3 h-3 text-indigo-500" />
+          <span>LOCAL SCHEDULE</span>
         </div>
       </div>
 
@@ -225,11 +225,11 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
             </div>
           </div>
         ) : (
-          <div className="bg-blue-50/75 border border-blue-100/50 p-3 rounded-xl flex items-start gap-2 text-[10px] text-blue-950">
-            <Video className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+          <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl flex items-start gap-2 text-[10px] text-slate-800">
+            <Video className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold">Google Meet 가상 회의 링크 100% 자동 생성</p>
-              <p className="text-slate-500 mt-0.5">본사 임원 및 자회사 담당 자율 참석을 위한 고유의 Google Meet 미팅 화상 주소가 캘린더 양방향 동기화 시 자동으로 생성되어 첨부됩니다.</p>
+              <p className="font-bold">온라인 화상 회의용 링크 생성 안내</p>
+              <p className="text-slate-500 mt-0.5">화상 미팅이 확정되면 참여 인원들에게 발송할 Zoom, Google Meet 등 고유 초대용 URL을 미팅 정보에 기록해 주십시오.</p>
             </div>
           </div>
         )}
@@ -250,17 +250,7 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
             </select>
           </div>
 
-          <div className="flex items-center justify-end pt-4">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={googleSync}
-                onChange={(e) => setGoogleSync(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-slate-200 rounded focus:ring-blue-400 accent-blue-500"
-              />
-              <span className="text-[10px] font-bold text-slate-650">영업팀 캘린더 양방향 전송</span>
-            </label>
-          </div>
+          {/* Google Sync hidden from regular UI - managed in developer backlog */}
         </div>
 
         {/* Ref notes */}
@@ -288,17 +278,17 @@ export default function MeetingForm({ brands, contacts, onSubmit, onCancel, isSu
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-4.5 py-2 text-xs font-bold bg-blue-400 hover:bg-blue-500 text-white rounded-xl shadow-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
+          className="px-4.5 py-2 text-xs font-bold bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl shadow-xs flex items-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
         >
           {isSubmitting ? (
             <>
               <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Google API 동기화 중...</span>
+              <span>일정 등록 진행 중...</span>
             </>
           ) : (
             <>
               <Save className="w-4 h-4" />
-              <span>일정 확정 및 캘린더 전송</span>
+              <span>세일즈 일정 확정 및 저장</span>
             </>
           )}
         </button>
